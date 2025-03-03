@@ -5,6 +5,7 @@ import { computed, inject, onMounted, onUnmounted, ref, watchEffect, type Comput
 import { useRoute } from 'vue-router';
 
 import type { GQLInterceptor } from '@/lib/interceptors/network-interceptor/gql-interceptor';
+import { MountPointMaintainer } from '@/lib/mount-point-maintainer';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
 import type { ChatRestrictions } from '@/lib/types/gql/response/chat-restrictions';
 import { useFollowingStore } from '@/stores/following-store';
@@ -15,8 +16,8 @@ const route = useRoute();
 const followedAtTimestamp = ref(0);
 const followingStore = useFollowingStore();
 const followedWidget = ref<HTMLElement | null>(null);
-let channelLinkWaiter: MutationObserver;
 const gqlInterceptor: GQLInterceptor = inject('gqlInterceptor')!;
+let mountPointSelector: MountPointMaintainer;
 
 const chatRestrictionsUnsub = gqlInterceptor.subscribe(
   { operationName: 'ChatRestrictions' },
@@ -47,31 +48,19 @@ const followingFor = computed(() => dayjs(followedAtTimestamp.value).fromNow());
 watchEffect(() => (followedAtTimestamp.value = followingStore.get(channel.value) ?? -1));
 
 onMounted(() => {
-  const streamInfo = document.querySelector('.channel-info-content')!;
+  const streamInfo: HTMLElement = document.querySelector('.channel-info-content')!;
+  mountPointSelector = new MountPointMaintainer(streamInfo);
 
-  channelLinkWaiter = new MutationObserver((mutations) => {
-    const isNonWidgetRemoved = (x: MutationRecord) =>
-      x.removedNodes.length > 0 && !x.target.contains(followedWidget.value);
-
-    if (mutations.every(isNonWidgetRemoved) || mutations.every((x) => x.addedNodes.length === 0)) {
-      return;
-    }
-
-    const channelLink =
-      streamInfo.querySelector(`a[href="/${channel.value}"]:has(h1)`) ??
-      streamInfo.querySelector(`a[href="/${channel.value}"]:has(div > h1)`);
-
-    if (channelLink !== null) {
-      followedWidget.value = channelLink.parentElement;
-    }
-  });
-
-  channelLinkWaiter.observe(streamInfo, { subtree: true, childList: true });
-  return;
+  mountPointSelector.watch(
+    (x) =>
+      x.querySelector(`a[href="/${channel.value}"]:has(h1)`) ??
+      x.querySelector(`a[href="/${channel.value}"]:has(div > h1)`),
+    (x) => (followedWidget.value = x.parentElement),
+  );
 });
 
 onUnmounted(() => {
-  channelLinkWaiter?.disconnect();
+  mountPointSelector.disconnect();
   chatRestrictionsUnsub();
 });
 </script>
