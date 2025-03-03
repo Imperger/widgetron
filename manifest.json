@@ -1,0 +1,15 @@
+{
+  "name": "Twitch-extension",
+  "description": "Base Level Extension",
+  "version": "1.0",
+  "manifest_version": 3,
+  "action": {
+    "default_icon": "client/extension/icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.twitch.tv/*"],
+      "world": "MAIN"
+    }
+  ]
+}
