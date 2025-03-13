@@ -7,6 +7,7 @@ import { ChatInterceptor } from './lib/interceptors/network-interceptor/chat-int
 import { FetchInterceptor } from './lib/interceptors/network-interceptor/fetch-interceptor';
 import { GQLInterceptor } from './lib/interceptors/network-interceptor/gql-interceptor';
 import { WebsocketInterceptor } from './lib/interceptors/network-interceptor/websocket-interceptor';
+import { MountPointMaintainer } from './lib/mount-point-maintainer';
 import { waitUntil } from './lib/wait-until';
 import router from './router';
 
@@ -38,6 +39,7 @@ function createMountingPoint() {
 
   app.provide('gqlInterceptor', gqlInterceptor);
   app.provide('chatInterceptor', chatInterceptor);
+  app.provide('bodyMountPointMaintainer', new MountPointMaintainer(document.body));
 
   app.use(createPinia());
   app.use(router);

@@ -1,36 +1,21 @@
 <script setup lang="ts">
 import { inject, onMounted, onUnmounted, ref } from 'vue';
 
-import ToolsIcon from '@/components/icons/tools-icon.vue';
 import TwitchToggle from '@/components/twitch/twitch-toggle.vue';
-import {
-  type ClearChatCommand,
-  type ChatInterceptor,
+import type {
+  ChatInterceptor,
+  ClearChatCommand,
 } from '@/lib/interceptors/network-interceptor/chat-interceptor';
-import { MountPointMaintainer } from '@/lib/mount-point-maintainer';
+import type { MountPointMaintainer } from '@/lib/mount-point-maintainer';
 import { useSettingsStore } from '@/stores/settings-store';
 
-const settingsStore = useSettingsStore();
-const chatEnhancerWidget = ref<HTMLElement | null>(null);
-const dontHideDeletedMessagedMountPoint = ref<HTMLElement | null>(null);
-let mountPointSelector: MountPointMaintainer;
 const chatInterceptor: ChatInterceptor = inject('chatInterceptor')!;
-
-const chatMessagesUnsub = chatInterceptor.subscribe('PRIVMSG', (x) => {
-  console.log(x);
-
-  return false;
-});
+const mountPointMaintainer = inject<MountPointMaintainer>('bodyMountPointMaintainer')!;
+const settingsStore = useSettingsStore();
+const dontHideDeletedMessagedMountPoint = ref<HTMLElement | null>(null);
 
 onMounted(() => {
-  mountPointSelector = new MountPointMaintainer(document.body);
-
-  mountPointSelector.watch(
-    (x) => x.querySelector('.stream-chat-header'),
-    (x) => (chatEnhancerWidget.value = x),
-  );
-
-  mountPointSelector.watch(
+  mountPointMaintainer.watch(
     (x) => {
       const el: HTMLElement | null = x.querySelector('.chat-settings__content > div');
 
@@ -86,16 +71,11 @@ const onDontHideDeletedMessages = (enabled: boolean) => {
 };
 
 onUnmounted(() => {
-  mountPointSelector.disconnect();
-  chatMessagesUnsub();
   clearChatUnsub?.();
 });
 </script>
 
 <template>
-  <Teleport v-if="chatEnhancerWidget" :to="chatEnhancerWidget">
-    <button class="open-menu-btn"><ToolsIcon /></button>
-  </Teleport>
   <Teleport v-if="dontHideDeletedMessagedMountPoint" :to="dontHideDeletedMessagedMountPoint">
     <div class="deleted-message-visibility-option">
       <label>Don't Hide Deleted Messages</label>
@@ -107,17 +87,7 @@ onUnmounted(() => {
   </Teleport>
 </template>
 
-<style scoped>
-.open-menu-btn {
-  position: absolute;
-  right: calc(25px + var(--button-size-default));
-  padding: 5px;
-}
-
-.open-menu-btn:hover {
-  background-color: var(--color-background-button-text-hover);
-}
-
+<style scope>
 .deleted-message-visibility-option {
   display: flex;
   justify-content: space-between;
