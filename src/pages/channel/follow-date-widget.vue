@@ -5,7 +5,7 @@ import { computed, inject, onMounted, onUnmounted, ref, watchEffect, type Comput
 import { useRoute } from 'vue-router';
 
 import type { GQLInterceptor } from '@/lib/interceptors/network-interceptor/gql-interceptor';
-import { MountPointMaintainer } from '@/lib/mount-point-maintainer';
+import { MountPointMaintainer, type MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
 import type { ChatRestrictions } from '@/lib/types/gql/response/chat-restrictions';
 import { useFollowingStore } from '@/stores/following-store';
@@ -17,7 +17,8 @@ const followedAtTimestamp = ref(0);
 const followingStore = useFollowingStore();
 const followedWidget = ref<HTMLElement | null>(null);
 const gqlInterceptor: GQLInterceptor = inject('gqlInterceptor')!;
-let mountPointSelector: MountPointMaintainer;
+const mountPointMaintainer = inject<MountPointMaintainer>('bodyMountPointMaintainer')!;
+let mountPointWatchReleaser: MountPointWatchReleaser | null = null;
 
 const chatRestrictionsUnsub = gqlInterceptor.subscribe(
   { operationName: 'ChatRestrictions' },
@@ -48,10 +49,7 @@ const followingFor = computed(() => dayjs(followedAtTimestamp.value).fromNow());
 watchEffect(() => (followedAtTimestamp.value = followingStore.get(channel.value) ?? -1));
 
 onMounted(() => {
-  const streamInfo: HTMLElement = document.querySelector('.channel-info-content')!;
-  mountPointSelector = new MountPointMaintainer(streamInfo);
-
-  mountPointSelector.watch(
+  mountPointWatchReleaser = mountPointMaintainer.watch(
     (x) =>
       x.querySelector(`a[href="/${channel.value}"]:has(h1)`) ??
       x.querySelector(`a[href="/${channel.value}"]:has(div > h1)`),
@@ -60,8 +58,8 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  mountPointSelector.disconnect();
   chatRestrictionsUnsub();
+  mountPointWatchReleaser?.();
 });
 </script>
 

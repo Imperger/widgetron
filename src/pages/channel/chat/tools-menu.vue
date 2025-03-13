@@ -1,17 +1,22 @@
 <script setup lang="ts">
-import { inject, onMounted, ref } from 'vue';
+import { inject, onMounted, onUnmounted, ref } from 'vue';
 
 import ToolsIcon from '@/components/icons/tools-icon.vue';
-import type { MountPointMaintainer } from '@/lib/mount-point-maintainer';
+import type { MountPointMaintainer, MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 
 const mountPointMaintainer = inject<MountPointMaintainer>('bodyMountPointMaintainer')!;
 const chatEnhancerWidget = ref<HTMLElement | null>(null);
+let mountPointWatchReleaser: MountPointWatchReleaser | null = null;
 
 onMounted(() => {
-  mountPointMaintainer.watch(
+  mountPointWatchReleaser = mountPointMaintainer.watch(
     (x) => x.querySelector('.stream-chat-header'),
     (x) => (chatEnhancerWidget.value = x),
   );
+});
+
+onUnmounted(() => {
+  mountPointWatchReleaser?.();
 });
 </script>
 

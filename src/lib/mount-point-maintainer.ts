@@ -4,6 +4,8 @@ export type OnMount = (mountNode: HTMLElement) => void;
 
 export type OnUnmount = () => void;
 
+export type MountPointWatchReleaser = () => void;
+
 export class MountPointMaintainer {
   private readonly observers: MutationObserver[] = [];
 
@@ -13,7 +15,11 @@ export class MountPointMaintainer {
     }
   }
 
-  watch(mountPointSelector: MountPointSelector, onMount: OnMount, onUnmount?: OnUnmount): void {
+  watch(
+    mountPointSelector: MountPointSelector,
+    onMount: OnMount,
+    onUnmount?: OnUnmount,
+  ): MountPointWatchReleaser {
     let mountPoint: HTMLElement | null = null;
 
     const observer = new MutationObserver((mutations) => {
@@ -39,6 +45,15 @@ export class MountPointMaintainer {
     observer.observe(this.persistentNode, { subtree: true, childList: true });
 
     this.observers.push(observer);
+
+    return () => {
+      const removeIdx = this.observers.indexOf(observer);
+
+      if (removeIdx !== -1) {
+        this.observers[removeIdx].disconnect();
+        this.observers.splice(removeIdx, 1);
+      }
+    };
   }
 
   disconnect(): void {

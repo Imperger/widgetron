@@ -7,16 +7,17 @@ import type {
   ClearChatCommand,
   ClearMsgCommand,
 } from '@/lib/interceptors/network-interceptor/chat-interceptor';
-import type { MountPointMaintainer } from '@/lib/mount-point-maintainer';
+import type { MountPointMaintainer, MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 import { useSettingsStore } from '@/stores/settings-store';
 
 const chatInterceptor: ChatInterceptor = inject('chatInterceptor')!;
 const mountPointMaintainer = inject<MountPointMaintainer>('bodyMountPointMaintainer')!;
 const settingsStore = useSettingsStore();
 const dontHideDeletedMessagedMountPoint = ref<HTMLElement | null>(null);
+let mountPointWatchReleaser: MountPointWatchReleaser | null = null;
 
 onMounted(() => {
-  mountPointMaintainer.watch(
+  mountPointWatchReleaser = mountPointMaintainer.watch(
     (x) => {
       const el: HTMLElement | null = x.querySelector('.chat-settings__content > div');
       const backBtn = document.querySelector('.chat-settings__back-icon-container');
@@ -103,6 +104,7 @@ const onDontHideDeletedMessages = (enabled: boolean) => {
 onUnmounted(() => {
   clearChatUnsub?.();
   clearMsgUnsub?.();
+  mountPointWatchReleaser?.();
 });
 </script>
 
