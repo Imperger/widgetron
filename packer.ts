@@ -9,17 +9,17 @@ interface ContentScriptEntries {
 }
 
 async function Clear() {
-  if (path.basename(import.meta.dirname) !== 'dist'){
+  if (path.basename(import.meta.dirname) !== 'dist') {
     throw new Error('Packer script located not in a dist folder');
   }
 
-  for(const basename of  await fs.readdir(import.meta.dirname)) {
+  for (const basename of await fs.readdir(import.meta.dirname)) {
     const fullPath = path.join(import.meta.dirname, basename);
     const stat = await fs.stat(fullPath);
 
-    if(stat.isDirectory()) {
+    if (stat.isDirectory()) {
       await fs.rm(fullPath, { recursive: true, force: true });
-    } else if (stat.isFile() && basename !== path.basename(import.meta.filename)){
+    } else if (stat.isFile() && basename !== path.basename(import.meta.filename)) {
       await fs.rm(fullPath, { force: true });
     }
   }
@@ -29,7 +29,7 @@ async function CopyClientContent() {
   await fs.cp('../dist-client', 'client', { recursive: true });
 }
 
-async function  FindContentScriptEntries(): Promise<ContentScriptEntries> {
+async function FindContentScriptEntries(): Promise<ContentScriptEntries> {
   const result: ContentScriptEntries = { js: [], css: [] };
 
   const assetRelative = 'client/assets';
@@ -42,13 +42,13 @@ async function  FindContentScriptEntries(): Promise<ContentScriptEntries> {
     }
 
     const relativePath = path.relative(import.meta.dirname, fullPath);
-    switch(path.extname(basename)) {
+    switch (path.extname(basename)) {
       case '.js':
         result.js.push(relativePath);
-      break;
+        break;
       case '.css':
         result.css.push(relativePath);
-      break;
+        break;
     }
   }
 
@@ -57,7 +57,9 @@ async function  FindContentScriptEntries(): Promise<ContentScriptEntries> {
 
 async function GenerateManifest(entries: ContentScriptEntries) {
   const filename = 'manifest.json';
-  const template: ManifestV3 = JSON.parse(await fs.readFile(path.join('..', filename), { encoding: 'utf8' }));
+  const template: ManifestV3 = JSON.parse(
+    await fs.readFile(path.join('..', filename), { encoding: 'utf8' }),
+  );
 
   if (!template.content_scripts || template.content_scripts?.length === 0) {
     throw new Error('At least one content script entry is required');
@@ -69,7 +71,7 @@ async function GenerateManifest(entries: ContentScriptEntries) {
       contentScript.js = [];
     }
 
-    entries.js.forEach(x => contentScript.js?.push(x));
+    entries.js.forEach((x) => contentScript.js?.push(x));
   }
 
   if (entries.css.length > 0) {
@@ -78,7 +80,7 @@ async function GenerateManifest(entries: ContentScriptEntries) {
       contentScript.css = [];
     }
 
-    entries.css.forEach(x => contentScript.js?.push(x));
+    entries.css.forEach((x) => contentScript.css?.push(x));
   }
 
   fs.writeFile(filename, JSON.stringify(template));
@@ -89,4 +91,4 @@ async function GenerateManifest(entries: ContentScriptEntries) {
   await CopyClientContent();
   const entries = await FindContentScriptEntries();
   await GenerateManifest(entries);
-})().catch(e => console.error(e));
+})().catch((e) => console.error(e));

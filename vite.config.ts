@@ -15,6 +15,7 @@ export default defineConfig({
         format: 'iife',
       },
     },
+    cssCodeSplit: false,
   },
   resolve: {
     alias: {
