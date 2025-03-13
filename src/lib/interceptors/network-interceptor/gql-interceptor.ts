@@ -1,6 +1,6 @@
 import { jsonObjectEqual, type JSONObject } from '../../json-object-equal';
 
-import type { NetworkInterceptorListener, NetworkInterceptorRequest } from './network-interceptor';
+import type { FetchInterceptorListener, FetchInterceptorRequest } from './fetch-interceptor';
 
 export interface GQLQuery {
   operationName?: string;
@@ -21,10 +21,10 @@ interface GQLRequestItem {
   variables: JSONObject;
 }
 
-export class GQLInterceptor implements NetworkInterceptorListener {
+export class GQLInterceptor implements FetchInterceptorListener {
   private readonly subscribers: GQLInterceptorRecord[] = [];
 
-  async onRequest(req: NetworkInterceptorRequest, res: Response): Promise<boolean> {
+  async onRequest(req: FetchInterceptorRequest, res: Response): Promise<boolean> {
     if (!this.isGQLRequest(req)) {
       return false;
     }
@@ -69,7 +69,7 @@ export class GQLInterceptor implements NetworkInterceptorListener {
     };
   }
 
-  private isGQLRequest(req: NetworkInterceptorRequest): boolean {
+  private isGQLRequest(req: FetchInterceptorRequest): boolean {
     const url = 'https://gql.twitch.tv/gql';
 
     if (req.init?.method !== 'POST') {

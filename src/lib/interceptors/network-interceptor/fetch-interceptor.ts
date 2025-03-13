@@ -1,16 +1,16 @@
-export interface NetworkInterceptorRequest {
+export interface FetchInterceptorRequest {
   input: RequestInfo | URL;
   init?: RequestInit;
 }
 
-export interface NetworkInterceptorListener {
-  onRequest(req: NetworkInterceptorRequest, res: Response): Promise<boolean>;
+export interface FetchInterceptorListener {
+  onRequest(req: FetchInterceptorRequest, res: Response): Promise<boolean>;
 }
 
-export type NetworkInterceptorListenerUnsubscriber = () => void;
+export type FetchInterceptorListenerUnsubscriber = () => void;
 
-export class NetworkInterceptor {
-  private readonly subscribers: NetworkInterceptorListener[] = [];
+export class FetchInterceptor {
+  private readonly subscribers: FetchInterceptorListener[] = [];
 
   install(): void {
     const origin = window.fetch;
@@ -32,7 +32,7 @@ export class NetworkInterceptor {
     };
   }
 
-  subscribe(listener: NetworkInterceptorListener): NetworkInterceptorListenerUnsubscriber {
+  subscribe(listener: FetchInterceptorListener): FetchInterceptorListenerUnsubscriber {
     this.subscribers.push(listener);
 
     return () => {
