@@ -5,6 +5,7 @@ import TwitchToggle from '@/components/twitch/twitch-toggle.vue';
 import type {
   ChatInterceptor,
   ClearChatCommand,
+  ClearMsgCommand,
 } from '@/lib/interceptors/network-interceptor/chat-interceptor';
 import type { MountPointMaintainer } from '@/lib/mount-point-maintainer';
 import { useSettingsStore } from '@/stores/settings-store';
@@ -18,8 +19,8 @@ onMounted(() => {
   mountPointMaintainer.watch(
     (x) => {
       const el: HTMLElement | null = x.querySelector('.chat-settings__content > div');
-
-      return el?.children.item(0)?.textContent === 'My Preferences' ? el : null;
+      const backBtn = document.querySelector('.chat-settings__back-icon-container');
+      return backBtn?.childElementCount === 0 ? el : null;
     },
     (x) => (dontHideDeletedMessagedMountPoint.value = x),
     () => (dontHideDeletedMessagedMountPoint.value = null),
@@ -31,6 +32,7 @@ onMounted(() => {
 });
 
 let clearChatUnsub!: () => void;
+let clearMsgUnsub!: () => void;
 
 const highlightDeletedMessages = () => {
   clearChatUnsub = chatInterceptor.subscribe<ClearChatCommand>('CLEARCHAT', (x) => {
@@ -43,6 +45,7 @@ const highlightDeletedMessages = () => {
     for (const messageContainer of messagesContainer.children) {
       const displayName =
         messageContainer.querySelector('.chat-author__display-name')?.textContent ?? '';
+
       const textContainer = messageContainer.querySelector(
         'span[data-a-target="chat-message-text"]',
       );
@@ -52,6 +55,33 @@ const highlightDeletedMessages = () => {
       }
 
       if (x.targetUserDisplayName === '' || x.targetUserDisplayName === displayName) {
+        textContainer.classList.add('deleted-message');
+      }
+    }
+
+    return true;
+  });
+
+  clearMsgUnsub = chatInterceptor.subscribe<ClearMsgCommand>('CLEARMSG', (x) => {
+    const messagesContainer = document.querySelector('.chat-scrollable-area__message-container');
+
+    if (messagesContainer === null) {
+      return true;
+    }
+
+    for (const messageContainer of messagesContainer.children) {
+      const displayName =
+        messageContainer.querySelector('.chat-author__display-name')?.textContent ?? '';
+
+      const textContainer = messageContainer.querySelector(
+        'span[data-a-target="chat-message-text"]',
+      );
+
+      if (textContainer === null) {
+        continue;
+      }
+
+      if (displayName === x.targetUserDisplayName && textContainer.textContent === x.messageText) {
         textContainer.classList.add('deleted-message');
       }
     }
@@ -72,6 +102,7 @@ const onDontHideDeletedMessages = (enabled: boolean) => {
 
 onUnmounted(() => {
   clearChatUnsub?.();
+  clearMsgUnsub?.();
 });
 </script>
 
