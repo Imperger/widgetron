@@ -204,7 +204,7 @@ export class ChatInterceptor implements WebsocketInterceptorListener {
       roomId: tags.get('room-id') ?? '',
       roomDisplayName: roomDisplayName.slice(1),
       targetUserId: tags.get('target-user-id') ?? '',
-      targetUserDisplayName: targetUserDisplayName ?? '',
+      targetUserDisplayName: targetUserDisplayName.trimEnd() ?? '',
       banDuration: Number.parseInt(tags.get('ban-duration') ?? '0'),
       timestamp: Number.parseInt(tags.get('tmi-sent-ts') ?? '0'),
     };
