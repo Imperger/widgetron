@@ -39,12 +39,22 @@ export interface ClearChatCommand {
   timestamp: number;
 }
 
+export interface ClearMsgCommand {
+  type: 'CLEARMSG';
+  roomId: string;
+  roomDisplayName: string;
+  targetUserDisplayName: string;
+  targetMessageId: string;
+  messageText: string;
+  timestamp: number;
+}
+
 export interface UnknownCommand {
   type: 'UNKNOWN';
   data: string;
 }
 
-export type ParsedMessageBody = UnknownCommand | ChatMessage | ClearChatCommand;
+export type ParsedMessageBody = UnknownCommand | ChatMessage | ClearChatCommand | ClearMsgCommand;
 
 interface PacketHeader {
   tagsStr: string;
@@ -114,6 +124,8 @@ export class ChatInterceptor implements WebsocketInterceptorListener {
         return this.parseUserMessage({ tagsStr, source, command }, unparsed);
       case 'CLEARCHAT':
         return this.parseClearCommand({ tagsStr, source, command }, unparsed);
+      case 'CLEARMSG':
+        return this.parseClearMsgCommand({ tagsStr, source, command }, unparsed);
       default:
         return { type: 'UNKNOWN', data: messageBody };
     }
@@ -194,6 +206,21 @@ export class ChatInterceptor implements WebsocketInterceptorListener {
       targetUserId: tags.get('target-user-id') ?? '',
       targetUserDisplayName: targetUserDisplayName ?? '',
       banDuration: Number.parseInt(tags.get('ban-duration') ?? '0'),
+      timestamp: Number.parseInt(tags.get('tmi-sent-ts') ?? '0'),
+    };
+  }
+
+  private parseClearMsgCommand(header: PacketHeader, unparsed: string): ClearMsgCommand {
+    const tags = this.parseTagsStr(header.tagsStr);
+    const [roomDisplayName, messageText] = splitFirstN(unparsed, ' :', 2);
+
+    return {
+      type: 'CLEARMSG',
+      roomId: tags.get('room-id') ?? '',
+      roomDisplayName: roomDisplayName.slice(1),
+      targetUserDisplayName: tags.get('login') ?? '',
+      targetMessageId: tags.get('target-msg-id') ?? '',
+      messageText: messageText.trimEnd(),
       timestamp: Number.parseInt(tags.get('tmi-sent-ts') ?? '0'),
     };
   }
