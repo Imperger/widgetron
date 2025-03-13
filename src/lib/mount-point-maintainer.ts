@@ -2,12 +2,18 @@ export type MountPointSelector = (persistentNode: HTMLElement) => HTMLElement | 
 
 export type OnMount = (mountNode: HTMLElement) => void;
 
+export type OnUnmount = () => void;
+
 export class MountPointMaintainer {
   private readonly observers: MutationObserver[] = [];
 
-  constructor(private readonly persistentNode: HTMLElement) {}
+  constructor(private readonly persistentNode: HTMLElement) {
+    if (this.persistentNode === null) {
+      throw new Error('PersistentNode must exist before MountPointMaintainer is created');
+    }
+  }
 
-  watch(mountPointSelector: MountPointSelector, onMount: OnMount): void {
+  watch(mountPointSelector: MountPointSelector, onMount: OnMount, onUnmount?: OnUnmount): void {
     let mountPoint: HTMLElement | null = null;
 
     const observer = new MutationObserver((mutations) => {
@@ -25,6 +31,8 @@ export class MountPointMaintainer {
 
       if (mountPoint !== null) {
         onMount(mountPoint);
+      } else {
+        onUnmount?.();
       }
     });
 
