@@ -30,6 +30,11 @@ const top = defineModel<number>('top', { required: false, default: 0 });
 const emit = defineEmits<FloatingWindowEvents>();
 
 const componentRef = ref<HTMLElement | null>(null);
+
+const isApplied = ref(false);
+const isAppliedDuration = 800;
+let isAppliedFadeTimer = -1;
+
 let resizeObserver: ResizeObserver | null = null;
 
 let isDragging = false;
@@ -69,6 +74,15 @@ const onResize = (_entries: ResizeObserverEntry[], _observer: ResizeObserver) =>
   height.value = rect.height;
 };
 
+const onSave = () => {
+  isApplied.value = true;
+
+  clearTimeout(isAppliedFadeTimer);
+  isAppliedFadeTimer = setTimeout(() => (isApplied.value = false), isAppliedDuration);
+
+  emit('save');
+};
+
 const saveIconColor = computed(() => (saveEnabled ? '#ffffff' : '#e877e8'));
 
 onMounted(() => {
@@ -95,7 +109,7 @@ onUnmounted(() => {
       @mouseleave="onDragStop"
       class="title-bar"
     >
-      <button :disabled="!saveEnabled" @click="() => emit('save')" class="title-bar-savebtn">
+      <button :disabled="!saveEnabled" @click="onSave" class="title-bar-savebtn">
         <TickIcon :color="saveIconColor" />
       </button>
       <div class="title-bar-caption">{{ title }}</div>
@@ -104,6 +118,7 @@ onUnmounted(() => {
     <div class="floating-window-content">
       <slot></slot>
     </div>
+    <div v-if="isApplied" class="floating-window-applied-popup"><p>Applied</p></div>
   </div>
 </template>
 
@@ -156,5 +171,34 @@ onUnmounted(() => {
   flex-direction: column;
   max-height: calc(100% - var(--caption-bar-height));
   flex: 1 0 auto;
+}
+
+.floating-window-applied-popup {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 35px;
+  background-color: #43a047;
+  border-radius: 40px;
+  opacity: 1;
+  animation: fadeOut 800ms ease-in forwards;
+}
+
+.floating-window-applied-popup p {
+  font-weight: bold;
+  font-size: 3em;
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 </style>
