@@ -1,7 +1,13 @@
 <script setup lang="ts">
+import * as monaco from 'monaco-editor';
 import { inject, onMounted, onUnmounted, ref } from 'vue';
 
+import CssEditorWindow from '@/components/code-editor/css-editor-window.vue';
+import { parsingErorValidator as parsingEror } from '@/components/code-editor/validators/parsing-error-validator';
+import { requireClassValidator as requireClass } from '@/components/code-editor/validators/require-class-validator';
+import GearIcon from '@/components/icons/gear-icon.vue';
 import TwitchToggle from '@/components/twitch/twitch-toggle.vue';
+import { CssInjector } from '@/lib/css-injector';
 import type {
   ChatInterceptor,
   ClearChatCommand,
@@ -15,6 +21,9 @@ const mountPointMaintainer = inject<MountPointMaintainer>('bodyMountPointMaintai
 const settingsStore = useSettingsStore();
 const dontHideDeletedMessagedMountPoint = ref<HTMLElement | null>(null);
 let mountPointWatchReleaser: MountPointWatchReleaser | null = null;
+const css = new CssInjector('deleted-messages-stylesheet');
+let cssPatcherEditor: monaco.editor.IStandaloneCodeEditor | null = null;
+const isCssPatcherShown = ref(false);
 
 onMounted(() => {
   mountPointWatchReleaser = mountPointMaintainer.watch(
@@ -30,6 +39,8 @@ onMounted(() => {
   if (settingsStore.get.dontHideDeletedMessages) {
     highlightDeletedMessages();
   }
+
+  css.update(settingsStore.get.deletedMessageStyle);
 });
 
 let clearChatUnsub!: () => void;
@@ -71,19 +82,19 @@ const highlightDeletedMessages = () => {
     }
 
     for (const messageContainer of messagesContainer.children) {
-      const displayName =
-        messageContainer.querySelector('.chat-author__display-name')?.textContent ?? '';
+      const displayNameEl = messageContainer.querySelector('.chat-author__display-name');
 
-      const textContainer = messageContainer.querySelector(
-        'span[data-a-target="chat-message-text"]',
-      );
+      const displayName = displayNameEl?.textContent ?? '';
 
-      if (textContainer === null) {
+      const textEl = messageContainer.querySelector('span[data-a-target="chat-message-text"]');
+
+      if (textEl === null || displayNameEl === null) {
         continue;
       }
 
-      if (displayName === x.targetUserDisplayName && textContainer.textContent === x.messageText) {
-        textContainer.classList.add('deleted-message');
+      if (displayName === x.targetUserDisplayName && textEl.textContent === x.messageText) {
+        displayNameEl.classList.add('deleted-message-displayname');
+        textEl.classList.add('deleted-message-text');
       }
     }
 
@@ -101,6 +112,21 @@ const onDontHideDeletedMessages = (enabled: boolean) => {
   settingsStore.get.dontHideDeletedMessages = enabled;
 };
 
+const onInitialized = (instance: monaco.editor.IStandaloneCodeEditor) => {
+  cssPatcherEditor = instance;
+  cssPatcherEditor.setValue(settingsStore.get.deletedMessageStyle);
+};
+
+const onSave = () => {
+  const stylesheetContent = cssPatcherEditor!.getValue();
+
+  css.update(stylesheetContent);
+  settingsStore.get.deletedMessageStyle = stylesheetContent;
+};
+
+const openCssPatcher = () => (isCssPatcherShown.value = true);
+const closeCssPatcher = () => (isCssPatcherShown.value = false);
+
 onUnmounted(() => {
   clearChatUnsub?.();
   clearMsgUnsub?.();
@@ -112,12 +138,21 @@ onUnmounted(() => {
   <Teleport v-if="dontHideDeletedMessagedMountPoint" :to="dontHideDeletedMessagedMountPoint">
     <div class="deleted-message-visibility-option">
       <label>Don't Hide Deleted Messages</label>
+      <button @click="openCssPatcher"><GearIcon /></button>
       <TwitchToggle
         :modelValue="settingsStore.get.dontHideDeletedMessages"
         @update:modelValue="onDontHideDeletedMessages"
       />
     </div>
   </Teleport>
+  <CssEditorWindow
+    v-if="isCssPatcherShown"
+    title="Deleted message style"
+    :validators="[parsingEror(), requireClass('deleted-message-text')]"
+    @initialized="onInitialized"
+    @save="onSave"
+    @close="closeCssPatcher"
+  />
 </template>
 
 <style scope>
@@ -125,11 +160,5 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   padding: 5px;
-}
-</style>
-
-<style>
-.deleted-message {
-  color: #ff7800;
 }
 </style>

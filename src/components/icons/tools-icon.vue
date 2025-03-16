@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { cssVar } from '@/lib/css-var';
 
-interface ToolIconProps {
+interface ToolsIconProps {
   width?: number | string;
   height?: number | string;
   color?: string;
@@ -11,7 +11,7 @@ const {
   width = cssVar('button-icon-size-default') ?? 20,
   height = cssVar('button-icon-size-default') ?? 20,
   color = cssVar('color-fill-button-icon') ?? '#ffffff',
-} = defineProps<ToolIconProps>();
+} = defineProps<ToolsIconProps>();
 </script>
 
 <template>

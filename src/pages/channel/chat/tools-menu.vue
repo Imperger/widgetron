@@ -2,6 +2,8 @@
 import { inject, onMounted, onUnmounted, ref } from 'vue';
 
 import ToolsIcon from '@/components/icons/tools-icon.vue';
+import TwitchMenuItem from '@/components/twitch/twitch-menu/twitch-menu-item.vue';
+import TwitchMenu from '@/components/twitch/twitch-menu/twitch-menu.vue';
 import type { MountPointMaintainer, MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 
 const mountPointMaintainer = inject<MountPointMaintainer>('bodyMountPointMaintainer')!;
@@ -22,7 +24,12 @@ onUnmounted(() => {
 
 <template>
   <Teleport v-if="chatEnhancerWidget" :to="chatEnhancerWidget">
-    <button class="open-menu-btn"><ToolsIcon /></button>
+    <button class="open-menu-btn">
+      <ToolsIcon /><TwitchMenu offset-x="-100px"
+        ><TwitchMenuItem>Query Builder</TwitchMenuItem
+        ><TwitchMenuItem>Message Interceptor</TwitchMenuItem></TwitchMenu
+      >
+    </button>
   </Teleport>
 </template>
 

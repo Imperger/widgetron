@@ -16,6 +16,7 @@ export default defineConfig({
       },
     },
     cssCodeSplit: false,
+    assetsInlineLimit: 10000000, // the hack required for 'codicon.ttf' inlining
   },
   resolve: {
     alias: {
