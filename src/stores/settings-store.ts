@@ -7,6 +7,16 @@ export interface Settings {
 }
 const settingsLocalStorageKey = 'my-twitch-extension-settings';
 
+const deletedMessageStyleDefaults = `
+.deleted-message-text {
+  color: #ff7800;
+}
+
+.deleted-message-displayname {
+  color: #ff7800;
+}
+`;
+
 function LoadSettings(): Settings {
   const storedData = localStorage.getItem(settingsLocalStorageKey);
 
@@ -14,8 +24,7 @@ function LoadSettings(): Settings {
     ? JSON.parse(storedData)
     : {
         dontHideDeletedMessages: false,
-        deletedMessageStyle:
-          '.deleted-message-text {color: #ff7800;} .deleted-message-displayname {color: #ff7800;}',
+        deletedMessageStyle: deletedMessageStyleDefaults,
       };
 }
 
