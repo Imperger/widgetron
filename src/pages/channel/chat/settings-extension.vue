@@ -55,19 +55,17 @@ const highlightDeletedMessages = () => {
     }
 
     for (const messageContainer of messagesContainer.children) {
-      const displayName =
-        messageContainer.querySelector('.chat-author__display-name')?.textContent ?? '';
+      const displayNameEl = messageContainer.querySelector('.chat-author__display-name');
+      const displayName = displayNameEl?.textContent ?? '';
+      const textEl = messageContainer.querySelector('span[data-a-target="chat-message-text"]');
 
-      const textContainer = messageContainer.querySelector(
-        'span[data-a-target="chat-message-text"]',
-      );
-
-      if (textContainer === null) {
+      if (textEl === null || displayNameEl === null) {
         continue;
       }
 
       if (x.targetUserDisplayName === '' || x.targetUserDisplayName === displayName) {
-        textContainer.classList.add('deleted-message');
+        displayNameEl.classList.add('deleted-message-displayname');
+        textEl.classList.add('deleted-message-text');
       }
     }
 
@@ -83,9 +81,7 @@ const highlightDeletedMessages = () => {
 
     for (const messageContainer of messagesContainer.children) {
       const displayNameEl = messageContainer.querySelector('.chat-author__display-name');
-
       const displayName = displayNameEl?.textContent ?? '';
-
       const textEl = messageContainer.querySelector('span[data-a-target="chat-message-text"]');
 
       if (textEl === null || displayNameEl === null) {

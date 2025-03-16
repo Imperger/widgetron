@@ -13,7 +13,7 @@ const deletedMessageStyleDefaults = `
 }
 
 .deleted-message-displayname {
-  color: #ff7800;
+  color: #ff7800 !important;
 }
 `;
 
