@@ -148,7 +148,10 @@ onUnmounted(() => {
   <CssEditorWindow
     v-if="isCssPatcherShown"
     title="Deleted message style"
-    :validators="[parsingEror(), requireClass('deleted-message-text')]"
+    :validators="[
+      parsingEror(),
+      requireClass('deleted-message-text', 'deleted-message-displayname'),
+    ]"
     @initialized="onInitialized"
     @save="onSave"
     @close="closeCssPatcher"
