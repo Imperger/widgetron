@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, provide, ref, type Ref } from 'vue';
 
 import { onClickOutside, type OnListOutsideDeactivator } from '@/lib/on-click-outside';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
+
+export interface MenuRoot {
+  isShown: Ref<boolean>;
+}
 
 export interface TwitchMenuProps {
   offsetX?: number | string;
@@ -13,6 +17,8 @@ const { offsetX = 0 } = defineProps<TwitchMenuProps>();
 const componentRef = ref<HTMLElement | null>(null);
 const isShown = ref(false);
 let onClickOutsideDeactivator: OnListOutsideDeactivator | null = null;
+
+provide('menuRoot', { isShown });
 
 onMounted(() => {
   componentRef.value?.parentElement?.addEventListener('click', onTriggerClick);
