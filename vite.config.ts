@@ -8,6 +8,11 @@ import vueDevTools from 'vite-plugin-vue-devtools';
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue(), vueJsx(), vueDevTools()],
+  esbuild: {
+    minifySyntax: false, // without it: Could not load file 'bundle.js' for content script. It isn't UTF-8 encoded.
+    minifyIdentifiers: true,
+    minifyWhitespace: true,
+  },
   build: {
     outDir: 'dist-client',
     rollupOptions: {
@@ -17,6 +22,7 @@ export default defineConfig({
     },
     cssCodeSplit: false,
     assetsInlineLimit: 10000000, // the hack required for 'codicon.ttf' inlining
+    minify: 'esbuild',
   },
   resolve: {
     alias: {

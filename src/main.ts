@@ -2,6 +2,8 @@ import { createPinia } from 'pinia';
 import { createApp } from 'vue';
 
 import App from './App.vue';
+import { db } from './db/db';
+import { ExtensionDB } from './extension-db';
 import { NavigationInterceptor } from './lib/interceptors/navigation-interceptor';
 import { ChatInterceptor } from './lib/interceptors/network-interceptor/chat-interceptor';
 import { FetchInterceptor } from './lib/interceptors/network-interceptor/fetch-interceptor';
@@ -40,6 +42,7 @@ function createMountingPoint() {
   app.provide('gqlInterceptor', gqlInterceptor);
   app.provide('chatInterceptor', chatInterceptor);
   app.provide('bodyMountPointMaintainer', new MountPointMaintainer(document.body));
+  app.provide('db', new ExtensionDB(db));
 
   app.use(createPinia());
   app.use(router);

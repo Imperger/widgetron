@@ -13,6 +13,7 @@ export interface Badge {
 
 export interface ChatMessage {
   type: 'PRIVMSG';
+  id: string;
   roomId: string;
   roomDisplayName: string;
   userId: string;
@@ -178,6 +179,7 @@ export class ChatInterceptor implements WebsocketInterceptorListener {
 
     return {
       type: 'PRIVMSG',
+      id: tags.get('id') ?? '',
       roomId: tags.get('room-id') ?? '',
       roomDisplayName: roomDisplayName.slice(1),
       userId: tags.get('user-id') ?? '',
