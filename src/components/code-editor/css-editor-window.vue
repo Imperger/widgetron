@@ -8,7 +8,7 @@ import ErrorLog from '@/components/code-editor/error-log.vue';
 import {
   mergeValidators,
   type Validator,
-} from '@/components/code-editor/validators/merge-validators';
+} from '@/components/code-editor/validators/css/merge-validators';
 import FloatingWindow from '@/components/floating-window.vue';
 
 export interface CssEditorWindowProps {
