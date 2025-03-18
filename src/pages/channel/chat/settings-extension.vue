@@ -2,9 +2,9 @@
 import * as monaco from 'monaco-editor';
 import { inject, onMounted, onUnmounted, ref } from 'vue';
 
-import CssEditorWindow from '@/components/code-editor/css-editor-window.vue';
-import { parsingErorValidator as parsingEror } from '@/components/code-editor/validators/css/parsing-error-validator';
-import { requireClassValidator as requireClass } from '@/components/code-editor/validators/css/require-class-validator';
+import CssEditorWindow from '@/components/code-editor/css/css-editor-window.vue';
+import { parsingErorValidator as parsingEror } from '@/components/code-editor/css/validators/parsing-error-validator';
+import { requireClassValidator as requireClass } from '@/components/code-editor/css/validators/require-class-validator';
 import GearIcon from '@/components/icons/gear-icon.vue';
 import TwitchToggle from '@/components/twitch/twitch-toggle.vue';
 import { CssInjector } from '@/lib/css-injector';

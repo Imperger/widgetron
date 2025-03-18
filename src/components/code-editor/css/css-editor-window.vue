@@ -3,12 +3,10 @@ import type { CssStylesheetAST } from '@adobe/css-tools';
 import * as monaco from 'monaco-editor';
 import { computed, ref } from 'vue';
 
-import CssEditor, { type ValidationResultResolver } from '@/components/code-editor/css-editor.vue';
+import CssEditor, { type ValidationResultResolver } from './css-editor.vue';
+import { mergeValidators, type Validator } from './validators/merge-validators';
+
 import ErrorLog from '@/components/code-editor/error-log.vue';
-import {
-  mergeValidators,
-  type Validator,
-} from '@/components/code-editor/validators/css/merge-validators';
 import FloatingWindow from '@/components/floating-window.vue';
 
 export interface CssEditorWindowProps {
@@ -50,7 +48,6 @@ const validator = (tree: CssStylesheetAST, resolve: ValidationResultResolver) =>
     style="background-color: white"
   >
     <CssEditor
-      language="css"
       :placeholder="placeholder"
       @initialized="(x) => emit('initialized', x)"
       @validation="validator"

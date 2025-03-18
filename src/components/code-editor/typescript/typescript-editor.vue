@@ -1,31 +1,38 @@
 <script setup lang="ts">
-import cssTool, { type CssStylesheetAST } from '@adobe/css-tools';
 import * as monaco from 'monaco-editor';
+import * as typescript from 'typescript';
 
-import CodeEditor, { type CodeEditorProps } from './code-editor.vue';
+import CodeEditor, { type CodeEditorProps } from '../code-editor.vue';
 
-export type CssEditorProps = Pick<CodeEditorProps, 'placeholder'>;
+export type TypescriptEditorProps = Pick<CodeEditorProps, 'placeholder'>;
 
-export interface CssEditorEvents {
+export interface TypescriptEditorEvents {
   (e: 'initialized', instance: monaco.editor.IStandaloneCodeEditor): void;
   (
     e: 'validation',
-    tree: CssStylesheetAST,
+    tree: typescript.SourceFile,
     resolver: (response: monaco.editor.IMarkerData[]) => void,
   ): void;
 }
 
 export type ValidationResultResolver = (result: monaco.editor.IMarkerData[]) => void;
 
-const { placeholder } = defineProps<CssEditorProps>();
+const { placeholder } = defineProps<TypescriptEditorProps>();
 
-const emit = defineEmits<CssEditorEvents>();
+const emit = defineEmits<TypescriptEditorEvents>();
 
 let editor: monaco.editor.IStandaloneCodeEditor | null = null;
 
 const validate = async () => {
   const validationTag = 'user_validation_response';
-  const parsed = cssTool.parse(editor!.getValue(), { silent: true });
+
+  const parsed = typescript.createSourceFile(
+    'main.ts',
+    editor!.getValue(),
+    typescript.ScriptTarget.Latest,
+    true,
+    typescript.ScriptKind.TS,
+  );
 
   const validationResult = await new Promise<monaco.editor.IMarkerData[]>((resolve) =>
     emit('validation', parsed, resolve),
@@ -46,7 +53,7 @@ const onInitialized = (instance: monaco.editor.IStandaloneCodeEditor) => {
 </script>
 
 <template>
-  <CodeEditor language="css" :placeholder="placeholder" @initialized="onInitialized" />
+  <CodeEditor language="typescript" :placeholder="placeholder" @initialized="onInitialized" />
 </template>
 
 <style scoped></style>

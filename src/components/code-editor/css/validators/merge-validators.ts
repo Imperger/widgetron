@@ -2,7 +2,7 @@ import type { CssStylesheetAST } from '@adobe/css-tools';
 import * as monaco from 'monaco-editor';
 import type { Ref } from 'vue';
 
-import type { ValidationResultResolver } from '../../css-editor.vue';
+import type { ValidationResultResolver } from '../css-editor.vue';
 
 export type Validator = (tree: CssStylesheetAST) => monaco.editor.IMarkerData[];
 
