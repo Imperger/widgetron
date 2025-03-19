@@ -2,9 +2,16 @@
 import * as monaco from 'monaco-editor';
 import * as typescript from 'typescript';
 
-import CodeEditor, { type CodeEditorProps } from '../code-editor.vue';
+import CodeEditor from '../code-editor.vue';
 
-export type TypescriptEditorProps = Pick<CodeEditorProps, 'placeholder'>;
+export interface ExtraLib {
+  content: string;
+  filePath: string;
+}
+
+export interface TypescriptEditorProps {
+  placeholder?: string;
+}
 
 export interface TypescriptEditorEvents {
   (e: 'initialized', instance: monaco.editor.IStandaloneCodeEditor): void;

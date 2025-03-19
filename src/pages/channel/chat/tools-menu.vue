@@ -3,6 +3,7 @@ import * as monaco from 'monaco-editor';
 import { inject, markRaw, onMounted, onUnmounted, ref } from 'vue';
 
 import TypescriptEditorWindow from '@/components/code-editor/typescript/typescript-editor-window.vue';
+import type { ExtraLib } from '@/components/code-editor/typescript/typescript-editor.vue';
 import ToolsIcon from '@/components/icons/tools-icon.vue';
 import TwitchMenuItem from '@/components/twitch/twitch-menu/twitch-menu-item.vue';
 import TwitchMenu from '@/components/twitch/twitch-menu/twitch-menu.vue';
@@ -11,6 +12,7 @@ import type { MountPointMaintainer, MountPointWatchReleaser } from '@/lib/mount-
 interface EditorInstance {
   id: number;
   instance: monaco.editor.IStandaloneCodeEditor | null;
+  extraLibs?: ExtraLib[];
 }
 
 const mountPointMaintainer = inject<MountPointMaintainer>('bodyMountPointMaintainer')!;
@@ -29,7 +31,18 @@ onMounted(() => {
 });
 
 const spawnQueryEditor = () => {
-  queryEditors.value.push({ id: nextEditorId++, instance: null });
+  queryEditors.value.push({
+    id: nextEditorId++,
+    instance: null,
+    extraLibs: [
+      {
+        content: `interface MyHelper {
+        id: ${nextEditorId};
+    }`,
+        filePath: `my-helper.d.ts`,
+      },
+    ],
+  });
 };
 
 const onInitialized = (instance: monaco.editor.IStandaloneCodeEditor, id: number) => {
@@ -61,6 +74,7 @@ onUnmounted(() => {
   <TypescriptEditorWindow
     v-for="editor of queryEditors"
     :key="editor.id"
+    :extraLibs="editor.extraLibs"
     @initialized="(x) => onInitialized(x, editor.id)"
     @close="() => closeQueryEditor(editor.id)"
   />

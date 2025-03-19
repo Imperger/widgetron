@@ -39,7 +39,7 @@ export interface CodeEditorEvents {
   (e: 'initialized', instance: monaco.editor.IStandaloneCodeEditor): void;
 }
 
-const { placeholder, language } = defineProps<CodeEditorProps>();
+const { placeholder = '', language } = defineProps<CodeEditorProps>();
 const emit = defineEmits<CodeEditorEvents>();
 
 const mountEl = ref<HTMLElement | null>(null);
