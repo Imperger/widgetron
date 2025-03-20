@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import * as monaco from 'monaco-editor';
 import * as typescript from 'typescript';
-import { computed, ref } from 'vue';
+import { computed, onUnmounted, ref } from 'vue';
 
 import TypescriptEditor, {
   type ExtraLib,
@@ -38,9 +38,12 @@ const emit = defineEmits<TypescriptEditorWindowEvents>();
 
 let isMouseOver = false;
 let editor: monaco.editor.IStandaloneCodeEditor | null = null;
+let disposerList: monaco.IDisposable[] = [];
 let uri = '';
 
 const errors = ref<string[]>([]);
+const windowHasFocus = ref(false);
+const editorHasFocus = ref(false);
 
 const saveEnabled = computed(() => errors.value.length === 0);
 
@@ -65,6 +68,11 @@ const onInitialized = (instance: monaco.editor.IStandaloneCodeEditor) => {
   editor = instance;
 
   uri = editor!.getModel()!.uri.toString();
+
+  const onFocusDisposer = editor.onDidFocusEditorWidget(() => (editorHasFocus.value = true));
+  const onBlurDisposer = editor.onDidBlurEditorWidget(() => (editorHasFocus.value = false));
+
+  disposerList = [onFocusDisposer, onBlurDisposer];
 
   emit('initialized', instance);
 };
@@ -92,10 +100,18 @@ const onClose = () => {
 
   emit('close');
 };
+
+const onFocus = () => (windowHasFocus.value = true);
+const onBlur = () => (windowHasFocus.value = false);
+
+const hasFocus = computed(() => windowHasFocus.value || editorHasFocus.value);
+
+onUnmounted(() => disposerList.forEach((x) => x.dispose()));
 </script>
 
 <template>
   <FloatingWindow
+    tabindex="0"
     :title="title"
     :resizable="true"
     :save-enabled="saveEnabled"
@@ -105,6 +121,9 @@ const onClose = () => {
     @close="onClose"
     @mouseover="onMouseOver"
     @mouseleave="onMouseLeave"
+    @focus="onFocus"
+    @blur="onBlur"
+    :class="{ 'foreground-window': hasFocus }"
     style="background-color: white"
   >
     <TypescriptEditor
@@ -116,4 +135,8 @@ const onClose = () => {
   </FloatingWindow>
 </template>
 
-<style scoped></style>
+<style scoped>
+.foreground-window {
+  z-index: 1001;
+}
+</style>
