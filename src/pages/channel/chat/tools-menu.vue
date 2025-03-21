@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import * as monaco from 'monaco-editor';
+import ts from 'typescript';
 import { inject, markRaw, onMounted, onUnmounted, ref } from 'vue';
 
 import TypescriptEditorWindow from '@/components/code-editor/typescript/typescript-editor-window.vue';
 import type { ExtraLib } from '@/components/code-editor/typescript/typescript-editor.vue';
+import { requireFunctionValidator } from '@/components/code-editor/typescript/validators/require-function-validator';
 import ToolsIcon from '@/components/icons/tools-icon.vue';
 import TwitchMenuItem from '@/components/twitch/twitch-menu/twitch-menu-item.vue';
 import TwitchMenu from '@/components/twitch/twitch-menu/twitch-menu.vue';
 import type { MountPointMaintainer, MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 import { ExternalLibCache } from '@/lib/typescript/external-lib-cache';
+import QueryBuilderWorker from '@/query-builder/query-builder-worker?worker&inline';
 
 interface EditorInstance {
   id: number;
@@ -55,6 +58,17 @@ const closeQueryEditor = (id: number) => {
   }
 };
 
+const onExecute = (editor: monaco.editor.IStandaloneCodeEditor) => {
+  const worker = new QueryBuilderWorker();
+
+  const sourceCode = ts.transpileModule(editor.getValue(), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+
+  worker.postMessage({ type: 'upload', sourceCode: sourceCode });
+  worker.postMessage({ type: 'execute' });
+};
+
 onUnmounted(() => {
   mountPointWatchReleaser?.();
 });
@@ -73,7 +87,9 @@ onUnmounted(() => {
     v-for="editor of queryEditors"
     :key="editor.id"
     :extraLibs="editor.extraLibs"
+    :validators="[requireFunctionValidator('onUpdate', ['AppDB'], 'void')]"
     @initialized="(x) => onInitialized(x, editor.id)"
+    @save="() => onExecute(editor.instance!)"
     @close="() => closeQueryEditor(editor.id)"
   />
 </template>
