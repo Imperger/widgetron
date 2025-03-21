@@ -8,6 +8,7 @@ import ToolsIcon from '@/components/icons/tools-icon.vue';
 import TwitchMenuItem from '@/components/twitch/twitch-menu/twitch-menu-item.vue';
 import TwitchMenu from '@/components/twitch/twitch-menu/twitch-menu.vue';
 import type { MountPointMaintainer, MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
+import { ExternalLibCache } from '@/lib/typescript/external-lib-cache';
 
 interface EditorInstance {
   id: number;
@@ -29,17 +30,14 @@ onMounted(() => {
     (x) => (chatEnhancerWidget.value = x),
   );
 });
-
-const spawnQueryEditor = () => {
+const spawnQueryEditor = async () => {
   queryEditors.value.push({
     id: nextEditorId++,
     instance: null,
     extraLibs: [
       {
-        content: `interface MyHelper {
-        id: ${nextEditorId};
-    }`,
-        filePath: `my-helper.d.ts`,
+        content: await ExternalLibCache.dexie(),
+        filePath: `dexie.d.ts`,
       },
     ],
   });
