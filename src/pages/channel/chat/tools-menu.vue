@@ -3,6 +3,8 @@ import * as monaco from 'monaco-editor';
 import ts from 'typescript';
 import { inject, markRaw, onMounted, onUnmounted, ref } from 'vue';
 
+import QueryBuilderWorker from '@/background-workers/query-builder-worker?worker&inline';
+import { SafeTaskRunner } from '@/background-workers/safe-task-runner';
 import TypescriptEditorWindow from '@/components/code-editor/typescript/typescript-editor-window.vue';
 import type { ExtraLib } from '@/components/code-editor/typescript/typescript-editor.vue';
 import { requireFunctionValidator } from '@/components/code-editor/typescript/validators/require-function-validator';
@@ -11,7 +13,6 @@ import TwitchMenuItem from '@/components/twitch/twitch-menu/twitch-menu-item.vue
 import TwitchMenu from '@/components/twitch/twitch-menu/twitch-menu.vue';
 import type { MountPointMaintainer, MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 import { ExternalLibCache } from '@/lib/typescript/external-lib-cache';
-import QueryBuilderWorker from '@/query-builder/query-builder-worker?worker&inline';
 
 interface EditorInstance {
   id: number;
@@ -58,15 +59,20 @@ const closeQueryEditor = (id: number) => {
   }
 };
 
-const onExecute = (editor: monaco.editor.IStandaloneCodeEditor) => {
-  const worker = new QueryBuilderWorker();
+const onExecute = async (editor: monaco.editor.IStandaloneCodeEditor) => {
+  const worker = new SafeTaskRunner(QueryBuilderWorker);
 
   const sourceCode = ts.transpileModule(editor.getValue(), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
 
-  worker.postMessage({ type: 'upload', sourceCode: sourceCode });
-  worker.postMessage({ type: 'execute' });
+  const uploaded = await worker.upload(sourceCode);
+
+  console.log(`Uploaded ${uploaded}`);
+
+  const result = await worker.execute();
+
+  console.log(`Executed result = ${result}`);
 };
 
 onUnmounted(() => {

@@ -2,11 +2,13 @@ import AppDb from '@/db/app-db';
 
 export interface UploadCodeMessage {
   type: 'upload';
+  requestId: number;
   sourceCode: string;
 }
 
 export interface ExecuteMessage {
   type: 'execute';
+  requestId: number;
 }
 
 export type IncomingMessage = UploadCodeMessage | ExecuteMessage;
@@ -20,9 +22,13 @@ self.onmessage = (e: MessageEvent<IncomingMessage>) => {
   switch (e.data.type) {
     case 'upload':
       uploadSourceCode(e.data.sourceCode);
+
+      self.postMessage({ requestId: e.data.requestId, return: true });
       break;
     case 'execute':
-      queryFunction?.(db);
+      const result = queryFunction?.(db);
+
+      self.postMessage({ requestId: e.data.requestId, return: result });
   }
 };
 
