@@ -4,7 +4,6 @@ import ts from 'typescript';
 import { inject, markRaw, onMounted, onUnmounted, ref } from 'vue';
 
 import QueryBuilderWorker from '@/background-workers/query-builder-worker?worker&inline';
-import { SafeTaskRunner } from '@/background-workers/safe-task-runner';
 import TypescriptEditorWindow from '@/components/code-editor/typescript/typescript-editor-window.vue';
 import type { ExtraLib } from '@/components/code-editor/typescript/typescript-editor.vue';
 import { requireFunctionValidator } from '@/components/code-editor/typescript/validators/require-function-validator';
@@ -12,7 +11,9 @@ import ToolsIcon from '@/components/icons/tools-icon.vue';
 import TwitchMenuItem from '@/components/twitch/twitch-menu/twitch-menu-item.vue';
 import TwitchMenu from '@/components/twitch/twitch-menu/twitch-menu.vue';
 import type { MountPointMaintainer, MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
+import { SafeTaskRunner } from '@/lib/safe-task-runner';
 import { ExternalLibCache } from '@/lib/typescript/external-lib-cache';
+import { TypescriptExtractor } from '@/lib/typescript/typescript-extractor';
 
 interface EditorInstance {
   id: number;
@@ -27,6 +28,9 @@ let nextEditorId = 0;
 const queryEditors = ref<EditorInstance[]>([]);
 
 let mountPointWatchReleaser: MountPointWatchReleaser | null = null;
+const placeholder = `
+async function onUpdate(db: AppDB): Promise<void> {
+}`;
 
 onMounted(() => {
   mountPointWatchReleaser = mountPointMaintainer.watch(
@@ -42,6 +46,10 @@ const spawnQueryEditor = async () => {
       {
         content: await ExternalLibCache.dexie(),
         filePath: `dexie.d.ts`,
+      },
+      {
+        content: await ExternalLibCache.appDB(),
+        filePath: `appDB.d.ts`,
       },
     ],
   });
@@ -62,11 +70,24 @@ const closeQueryEditor = (id: number) => {
 const onExecute = async (editor: monaco.editor.IStandaloneCodeEditor) => {
   const worker = new SafeTaskRunner(QueryBuilderWorker);
 
-  const sourceCode = ts.transpileModule(editor.getValue(), {
+  const sourceFile = ts.createSourceFile(
+    'main.ts',
+    editor.getValue(),
+    ts.ScriptTarget.Latest,
+    true,
+  );
+
+  const fn = TypescriptExtractor.functionBody(sourceFile, 'onUpdate');
+
+  if (fn === null) {
+    return;
+  }
+
+  const sourceCode = ts.transpileModule(fn.body, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
 
-  const uploaded = await worker.upload(sourceCode);
+  const uploaded = await worker.upload(sourceCode, fn.async);
 
   console.log(`Uploaded ${uploaded}`);
 
@@ -93,7 +114,8 @@ onUnmounted(() => {
     v-for="editor of queryEditors"
     :key="editor.id"
     :extraLibs="editor.extraLibs"
-    :validators="[requireFunctionValidator('onUpdate', ['AppDB'], 'void')]"
+    :placeholder="placeholder"
+    :validators="[requireFunctionValidator('onUpdate', ['AppDB'], 'Promise<void>')]"
     @initialized="(x) => onInitialized(x, editor.id)"
     @save="() => onExecute(editor.instance!)"
     @close="() => closeQueryEditor(editor.id)"

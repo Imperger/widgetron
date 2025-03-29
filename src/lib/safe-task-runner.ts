@@ -39,13 +39,13 @@ export class SafeTaskRunner<T extends WorkerConstructor> {
     this.setup();
   }
 
-  async upload(sourceCode: string): Promise<boolean> {
+  async upload(sourceCode: string, async: boolean): Promise<boolean> {
     return new Promise<boolean>((resolver) => {
       const requestId = this.requestId();
 
       this.pendingActions.push({ requestId, type: 'upload', resolver });
 
-      this.instance.postMessage({ requestId, type: 'upload', sourceCode });
+      this.instance.postMessage({ requestId, type: 'upload', sourceCode, async });
     });
   }
 

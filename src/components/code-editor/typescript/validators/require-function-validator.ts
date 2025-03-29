@@ -1,31 +1,6 @@
 import * as monaco from 'monaco-editor';
 import * as ts from 'typescript';
 
-type ValidTypeKind =
-  | ts.SyntaxKind.NumberKeyword
-  | ts.SyntaxKind.StringKeyword
-  | ts.SyntaxKind.BooleanKeyword
-  | ts.SyntaxKind.BigIntKeyword
-  | ts.SyntaxKind.VoidKeyword
-  | ts.SyntaxKind.UndefinedKeyword;
-
-function toSyntaxKind(type: string): ValidTypeKind {
-  switch (type) {
-    case 'number':
-      return ts.SyntaxKind.NumberKeyword;
-    case 'string':
-      return ts.SyntaxKind.StringKeyword;
-    case 'boolean':
-      return ts.SyntaxKind.BooleanKeyword;
-    case 'bigint':
-      return ts.SyntaxKind.BigIntKeyword;
-    case 'void':
-      return ts.SyntaxKind.VoidKeyword;
-  }
-
-  return ts.SyntaxKind.UndefinedKeyword;
-}
-
 function isClassParameter(node: ts.ParameterDeclaration, name: string): boolean {
   const type = node.type;
   if (type && ts.isTypeReferenceNode(type)) {
@@ -52,16 +27,14 @@ function isFunctionWithSignature(
   }
 
   const isParametersValid = parameters.every(
-    (x, n) =>
-      toSyntaxKind(parameterType[n]) === (x.type?.kind ?? ts.SyntaxKind.Unknown) ||
-      isClassParameter(x, parameterType[n]),
+    (x, n) => parameterType[n] === x.type?.getText() || isClassParameter(x, parameterType[n]),
   );
 
   if (!isParametersValid) {
     return false;
   }
 
-  if (node.type?.kind !== toSyntaxKind(returnType)) {
+  if (node.type?.getText() !== returnType) {
     return false;
   }
 
