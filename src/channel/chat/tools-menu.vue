@@ -29,7 +29,7 @@ const queryEditors = ref<EditorInstance[]>([]);
 
 let mountPointWatchReleaser: MountPointWatchReleaser | null = null;
 const placeholder = `
-async function onUpdate(db: AppDB): Promise<void> {
+async function onQuery(db: AppDB): Promise<unknown> {
 }`;
 
 onMounted(() => {
@@ -77,7 +77,7 @@ const onExecute = async (editor: monaco.editor.IStandaloneCodeEditor) => {
     true,
   );
 
-  const fn = TypescriptExtractor.functionBody(sourceFile, 'onUpdate');
+  const fn = TypescriptExtractor.functionBody(sourceFile, 'onQuery');
 
   if (fn === null) {
     return;
@@ -115,7 +115,7 @@ onUnmounted(() => {
     :key="editor.id"
     :extraLibs="editor.extraLibs"
     :placeholder="placeholder"
-    :validators="[requireFunctionValidator('onUpdate', ['AppDB'], 'Promise<void>')]"
+    :validators="[requireFunctionValidator('onQuery', ['AppDB'], 'Promise<unknown>')]"
     @initialized="(x) => onInitialized(x, editor.id)"
     @save="() => onExecute(editor.instance!)"
     @close="() => closeQueryEditor(editor.id)"
