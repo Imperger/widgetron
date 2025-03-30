@@ -3,7 +3,7 @@ import * as monaco from 'monaco-editor';
 import ts from 'typescript';
 import { inject, markRaw, onMounted, onUnmounted, ref } from 'vue';
 
-import QueryBuilderWorker from '@/background-workers/query-builder-worker?worker&inline';
+import QueryBuilderWorker from '@/channel/query-builder-worker?worker&inline';
 import TypescriptEditorWindow from '@/components/code-editor/typescript/typescript-editor-window.vue';
 import type { ExtraLib } from '@/components/code-editor/typescript/typescript-editor.vue';
 import { requireFunctionValidator } from '@/components/code-editor/typescript/validators/require-function-validator';

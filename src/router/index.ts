@@ -6,12 +6,12 @@ const router = createRouter({
     {
       path: '/directory',
       name: 'directory_page',
-      component: () => import('../pages/directory-page.vue'),
+      component: () => import('@/directory/directory-page.vue'),
     },
     {
       path: '/:channel',
       name: 'channel_page',
-      component: () => import('../pages/channel/channel-page.vue'),
+      component: () => import('@/channel/channel-page.vue'),
     },
   ],
 });
