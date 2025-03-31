@@ -29,7 +29,7 @@ const queryEditors = ref<EditorInstance[]>([]);
 
 let mountPointWatchReleaser: MountPointWatchReleaser | null = null;
 const placeholder = `
-async function onQuery(db: AppDB): Promise<unknown> {
+async function onQuery(db: AppDB): Promise<WidgetModel> {
 }`;
 
 onMounted(() => {
@@ -50,6 +50,10 @@ const spawnQueryEditor = async () => {
       {
         content: await ExternalLibCache.appDB(),
         filePath: `appDB.d.ts`,
+      },
+      {
+        content: await ExternalLibCache.widgetModel(),
+        filePath: `widget-model.d.ts`,
       },
     ],
   });
@@ -115,7 +119,7 @@ onUnmounted(() => {
     :key="editor.id"
     :extraLibs="editor.extraLibs"
     :placeholder="placeholder"
-    :validators="[requireFunctionValidator('onQuery', ['AppDB'], 'Promise<unknown>')]"
+    :validators="[requireFunctionValidator('onQuery', ['AppDB'], 'Promise<WidgetModel>')]"
     @initialized="(x) => onInitialized(x, editor.id)"
     @save="() => onExecute(editor.instance!)"
     @close="() => closeQueryEditor(editor.id)"

@@ -4,8 +4,9 @@ import { TypescriptExtractor } from './typescript-extractor';
 import { TypescriptTransformer } from './typescript-transform';
 
 export class ExternalLibCache {
-  private static dexieCode: string = '';
-  private static appDBCode: string = '';
+  private static dexieCode = '';
+  private static appDBCode = '';
+  private static widgetmodelCode = '';
 
   static async dexie(): Promise<string> {
     if (this.dexieCode.length === 0) {
@@ -75,5 +76,50 @@ export class ExternalLibCache {
     }
 
     return ExternalLibCache.appDBCode;
+  }
+
+  static async widgetModel(): Promise<string> {
+    if (this.widgetmodelCode.length === 0) {
+      {
+        const files = import.meta.glob('/src/widget/model/widget-model-table.ts', { as: 'raw' });
+        const file = Object.values(files)[0];
+
+        ExternalLibCache.widgetmodelCode = TypescriptTransformer.removeExport(await file());
+      }
+      {
+        const widgetModelFiles = import.meta.glob('/src/widget/model/widget-model.ts', {
+          as: 'raw',
+        });
+
+        if (Object.keys(widgetModelFiles).length === 0) {
+          throw new Error(
+            "Failed to locate 'widget-model.ts. Please verify the path or ensure the file has not been moved or deleted",
+          );
+        }
+
+        const sourceCode = await Object.values(widgetModelFiles)[0]();
+
+        const sourceFile = ts.createSourceFile(
+          'widget-model.ts',
+          sourceCode,
+          ts.ScriptTarget.ESNext,
+          true,
+        );
+
+        const widgetModelSourceCode = TypescriptExtractor.typeAliasDeclaration(
+          sourceFile,
+          'WidgetModel',
+        );
+
+        if (widgetModelSourceCode === null) {
+          throw new Error("Failed to find 'WidgetModel' type alias");
+        }
+
+        ExternalLibCache.widgetmodelCode +=
+          TypescriptTransformer.removeExport(widgetModelSourceCode);
+      }
+    }
+
+    return ExternalLibCache.widgetmodelCode;
   }
 }

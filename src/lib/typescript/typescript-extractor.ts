@@ -36,4 +36,28 @@ export class TypescriptExtractor {
 
     return findClassDefinition(sourceFile);
   }
+
+  static interfaceDeclaration(sourceFile: ts.SourceFile, interfaceName: string): string | null {
+    function findInterfaceDeclaration(node: ts.Node): string | null {
+      if (ts.isInterfaceDeclaration(node) && node.name?.text === interfaceName) {
+        return node.getText();
+      }
+
+      return ts.forEachChild(node, findInterfaceDeclaration) ?? null;
+    }
+
+    return findInterfaceDeclaration(sourceFile);
+  }
+
+  static typeAliasDeclaration(sourceFile: ts.SourceFile, interfaceName: string): string | null {
+    function findTypeAliasDeclaration(node: ts.Node): string | null {
+      if (ts.isTypeAliasDeclaration(node) && node.name?.text === interfaceName) {
+        return node.getText();
+      }
+
+      return ts.forEachChild(node, findTypeAliasDeclaration) ?? null;
+    }
+
+    return findTypeAliasDeclaration(sourceFile);
+  }
 }
