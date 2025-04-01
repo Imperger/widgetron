@@ -23,6 +23,7 @@ export interface TypescriptEditorWindowEvents {
   (e: 'initialized', instance: monaco.editor.IStandaloneCodeEditor): void;
   (e: 'close'): void;
   (e: 'save'): void;
+  (e: 'preview'): void;
 }
 
 const left = defineModel('left', { required: false, default: 100 });
@@ -115,9 +116,11 @@ onUnmounted(() => disposerList.forEach((x) => x.dispose()));
     :title="title"
     :resizable="true"
     :save-enabled="saveEnabled"
+    :preview-enabled="saveEnabled"
     v-model:left="left"
     v-model:top="top"
     @save="() => emit('save')"
+    @preview="() => emit('preview')"
     @close="onClose"
     @mouseover="onMouseOver"
     @mouseleave="onMouseLeave"

@@ -3,7 +3,6 @@ import * as monaco from 'monaco-editor';
 import ts from 'typescript';
 import { inject, markRaw, onMounted, onUnmounted, ref } from 'vue';
 
-import QueryBuilderWorker from '@/channel/query-builder-worker?worker&inline';
 import TypescriptEditorWindow from '@/components/code-editor/typescript/typescript-editor-window.vue';
 import type { ExtraLib } from '@/components/code-editor/typescript/typescript-editor.vue';
 import { requireFunctionValidator } from '@/components/code-editor/typescript/validators/require-function-validator';
@@ -11,9 +10,9 @@ import ToolsIcon from '@/components/icons/tools-icon.vue';
 import TwitchMenuItem from '@/components/twitch/twitch-menu/twitch-menu-item.vue';
 import TwitchMenu from '@/components/twitch/twitch-menu/twitch-menu.vue';
 import type { MountPointMaintainer, MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
-import { SafeTaskRunner } from '@/lib/safe-task-runner';
 import { ExternalLibCache } from '@/lib/typescript/external-lib-cache';
 import { TypescriptExtractor } from '@/lib/typescript/typescript-extractor';
+import FloatingWidget from '@/widget/floating-widget.vue';
 
 interface EditorInstance {
   id: number;
@@ -21,11 +20,29 @@ interface EditorInstance {
   extraLibs?: ExtraLib[];
 }
 
+interface WidgetPreview {
+  id: number;
+  updatePeriod: number;
+  sourceCode: string;
+  async: boolean;
+}
+
 const mountPointMaintainer = inject<MountPointMaintainer>('bodyMountPointMaintainer')!;
 const chatEnhancerWidget = ref<HTMLElement | null>(null);
 
 let nextEditorId = 0;
 const queryEditors = ref<EditorInstance[]>([]);
+
+let nextWidgetPreviewId = 0;
+const widgetPreviews = ref<WidgetPreview[]>([]);
+
+const closeWidget = (id: number) => {
+  const closeIdx = widgetPreviews.value.findIndex((x) => x.id === id);
+
+  if (closeIdx !== -1) {
+    widgetPreviews.value.splice(closeIdx, 1);
+  }
+};
 
 let mountPointWatchReleaser: MountPointWatchReleaser | null = null;
 const placeholder = `
@@ -72,8 +89,6 @@ const closeQueryEditor = (id: number) => {
 };
 
 const onExecute = async (editor: monaco.editor.IStandaloneCodeEditor) => {
-  const worker = new SafeTaskRunner(QueryBuilderWorker);
-
   const sourceFile = ts.createSourceFile(
     'main.ts',
     editor.getValue(),
@@ -91,14 +106,15 @@ const onExecute = async (editor: monaco.editor.IStandaloneCodeEditor) => {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
 
-  const uploaded = await worker.upload(sourceCode, fn.async);
-
-  console.log(`Uploaded ${uploaded}`);
-
-  const result = await worker.execute();
-
-  console.log(`Executed result = ${result}`);
+  widgetPreviews.value.push({
+    id: nextWidgetPreviewId++,
+    updatePeriod: 1000,
+    sourceCode,
+    async: fn.async,
+  });
 };
+
+const onSave = () => {};
 
 onUnmounted(() => {
   mountPointWatchReleaser?.();
@@ -121,8 +137,17 @@ onUnmounted(() => {
     :placeholder="placeholder"
     :validators="[requireFunctionValidator('onQuery', ['AppDB'], 'Promise<WidgetModel>')]"
     @initialized="(x) => onInitialized(x, editor.id)"
-    @save="() => onExecute(editor.instance!)"
+    @save="onSave"
+    @preview="onExecute(editor.instance!)"
     @close="() => closeQueryEditor(editor.id)"
+  />
+  <FloatingWidget
+    v-for="widget in widgetPreviews"
+    :key="widget.id"
+    :update-period="widget.updatePeriod"
+    :source-code="widget.sourceCode"
+    :async="widget.async"
+    @close="closeWidget(widget.id)"
   />
 </template>
 

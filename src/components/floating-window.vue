@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 import CloseIcon from '@/components/icons/close-icon.vue';
+import PlayIcon from '@/components/icons/play-icon.vue';
 import TickIcon from '@/components/icons/tick-icon.vue';
 
 interface MousePos {
@@ -13,14 +14,21 @@ export interface FloatingWindowProps {
   title?: string;
   resizable?: boolean;
   saveEnabled?: boolean;
+  previewEnabled?: boolean;
 }
 
 export interface FloatingWindowEvents {
   (e: 'close'): void;
   (e: 'save'): void;
+  (e: 'preview'): void;
 }
 
-const { title = '', resizable = false, saveEnabled = true } = defineProps<FloatingWindowProps>();
+const {
+  title = '',
+  resizable = false,
+  saveEnabled = undefined,
+  previewEnabled = undefined,
+} = defineProps<FloatingWindowProps>();
 
 const width = defineModel<number>('width', { required: false, default: 800 });
 const height = defineModel<number>('height', { required: false, default: 600 });
@@ -83,7 +91,15 @@ const onSave = () => {
   emit('save');
 };
 
+const onPreview = () => {
+  emit('preview');
+};
+
 const saveIconColor = computed(() => (saveEnabled ? '#ffffff' : '#e877e8'));
+const previewIconColor = computed(() => (previewEnabled ? '#ffffff' : '#e877e8'));
+
+const saveBtnShown = computed(() => saveEnabled !== undefined);
+const previewBtnShown = computed(() => previewEnabled !== undefined);
 
 onMounted(() => {
   resizeObserver = new ResizeObserver(onResize);
@@ -109,8 +125,21 @@ onUnmounted(() => {
       @mouseleave="onDragStop"
       class="title-bar"
     >
-      <button :disabled="!saveEnabled" @click="onSave" class="title-bar-savebtn">
+      <button
+        v-if="saveBtnShown"
+        :disabled="!saveEnabled"
+        @click="onSave"
+        class="title-bar-savebtn"
+      >
         <TickIcon :color="saveIconColor" />
+      </button>
+      <button
+        v-if="previewBtnShown"
+        :disabled="!previewEnabled"
+        @click="onPreview"
+        class="title-bar-savebtn"
+      >
+        <PlayIcon :color="previewIconColor" />
       </button>
       <div class="title-bar-caption">{{ title }}</div>
       <button @click="() => emit('close')" class="title-bar-closebtn"><CloseIcon /></button>

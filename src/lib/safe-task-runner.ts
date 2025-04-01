@@ -65,6 +65,10 @@ export class SafeTaskRunner<T extends WorkerConstructor> {
     });
   }
 
+  terminate(): void {
+    this.instance.terminate();
+  }
+
   private setup(): void {
     this.instance = new this.type();
 
