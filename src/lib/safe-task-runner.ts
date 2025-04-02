@@ -33,6 +33,7 @@ export type UploadActionResponse = ActionResponse<boolean>;
 export class SafeTaskRunner<T extends WorkerConstructor> {
   private nextRequestId = 0;
   private instance!: Worker;
+  public timeout = 1000;
   private pendingActions: PendingAction[] = [];
 
   constructor(private readonly type: T) {
@@ -49,7 +50,7 @@ export class SafeTaskRunner<T extends WorkerConstructor> {
     });
   }
 
-  async execute(timeout: number = 1000): Promise<unknown> {
+  async execute<T extends unknown[]>(...args: T): Promise<unknown> {
     return new Promise<unknown>((resolver, rejector) => {
       const requestId = this.requestId();
 
@@ -58,10 +59,10 @@ export class SafeTaskRunner<T extends WorkerConstructor> {
         type: 'execute',
         resolver,
         rejector,
-        timeoutTimer: setTimeout(() => this.onTimeout(), timeout),
+        timeoutTimer: setTimeout(() => this.onTimeout(), this.timeout),
       });
 
-      this.instance.postMessage({ requestId, type: 'execute' });
+      this.instance.postMessage({ requestId, type: 'execute', args });
     });
   }
 

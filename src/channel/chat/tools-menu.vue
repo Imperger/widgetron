@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import * as monaco from 'monaco-editor';
-import ts from 'typescript';
 import { inject, markRaw, onMounted, onUnmounted, ref } from 'vue';
 
 import TypescriptEditorWindow from '@/components/code-editor/typescript/typescript-editor-window.vue';
@@ -11,7 +10,6 @@ import TwitchMenuItem from '@/components/twitch/twitch-menu/twitch-menu-item.vue
 import TwitchMenu from '@/components/twitch/twitch-menu/twitch-menu.vue';
 import type { MountPointMaintainer, MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 import { ExternalLibCache } from '@/lib/typescript/external-lib-cache';
-import { TypescriptExtractor } from '@/lib/typescript/typescript-extractor';
 import FloatingWidget from '@/widget/floating-widget.vue';
 
 interface EditorInstance {
@@ -24,7 +22,6 @@ interface WidgetPreview {
   id: number;
   updatePeriod: number;
   sourceCode: string;
-  async: boolean;
 }
 
 const mountPointMaintainer = inject<MountPointMaintainer>('bodyMountPointMaintainer')!;
@@ -45,8 +42,17 @@ const closeWidget = (id: number) => {
 };
 
 let mountPointWatchReleaser: MountPointWatchReleaser | null = null;
+
 const placeholder = `
-async function onQuery(db: AppDB): Promise<WidgetModel> {
+interface UIInput extends OnlyUIInputProperties {
+
+}
+
+async function onUISetup(): Promise<UIInput> {
+    return { };
+}
+
+async function onQuery(db: AppDB, input: UIInput): Promise<WidgetModel> {
 }`;
 
 onMounted(() => {
@@ -72,6 +78,10 @@ const spawnQueryEditor = async () => {
         content: await ExternalLibCache.widgetModel(),
         filePath: `widget-model.d.ts`,
       },
+      {
+        content: await ExternalLibCache.widgetInput(),
+        filePath: `widget-input.d.ts`,
+      },
     ],
   });
 };
@@ -89,28 +99,10 @@ const closeQueryEditor = (id: number) => {
 };
 
 const onExecute = async (editor: monaco.editor.IStandaloneCodeEditor) => {
-  const sourceFile = ts.createSourceFile(
-    'main.ts',
-    editor.getValue(),
-    ts.ScriptTarget.Latest,
-    true,
-  );
-
-  const fn = TypescriptExtractor.functionBody(sourceFile, 'onQuery');
-
-  if (fn === null) {
-    return;
-  }
-
-  const sourceCode = ts.transpileModule(fn.body, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-  }).outputText;
-
   widgetPreviews.value.push({
     id: nextWidgetPreviewId++,
     updatePeriod: 1000,
-    sourceCode,
-    async: fn.async,
+    sourceCode: editor.getValue(),
   });
 };
 
@@ -135,7 +127,10 @@ onUnmounted(() => {
     :key="editor.id"
     :extraLibs="editor.extraLibs"
     :placeholder="placeholder"
-    :validators="[requireFunctionValidator('onQuery', ['AppDB'], 'Promise<WidgetModel>')]"
+    :validators="[
+      requireFunctionValidator('onUISetup', [], 'Promise<UIInput>'),
+      requireFunctionValidator('onQuery', ['AppDB', 'UIInput'], 'Promise<WidgetModel>'),
+    ]"
     @initialized="(x) => onInitialized(x, editor.id)"
     @save="onSave"
     @preview="onExecute(editor.instance!)"
@@ -146,7 +141,6 @@ onUnmounted(() => {
     :key="widget.id"
     :update-period="widget.updatePeriod"
     :source-code="widget.sourceCode"
-    :async="widget.async"
     @close="closeWidget(widget.id)"
   />
 </template>

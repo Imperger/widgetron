@@ -13,6 +13,7 @@ export class TypescriptTransformer {
     const transformedResult = ts.transform(parsed, [
       TypescriptTransformer.removeExportTransformFactory,
     ]);
+
     const printer = ts.createPrinter();
     return printer.printFile(transformedResult.transformed[0] as ts.SourceFile);
   }
