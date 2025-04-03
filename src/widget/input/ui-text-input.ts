@@ -4,5 +4,6 @@
  */
 
 export interface UITextInput {
+  label?: string;
   text: string;
 }

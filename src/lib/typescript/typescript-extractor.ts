@@ -60,4 +60,23 @@ export class TypescriptExtractor {
 
     return findTypeAliasDeclaration(sourceFile);
   }
+
+  static interfaceProperties(
+    sourceFile: ts.SourceFile,
+    interfaceName: string,
+  ): Map<string, string> {
+    const properties = new Map<string, string>();
+
+    ts.forEachChild(sourceFile, (node) => {
+      if (ts.isInterfaceDeclaration(node) && node.name.text === interfaceName) {
+        node.members.forEach((member) => {
+          if (ts.isPropertySignature(member) && member.type) {
+            properties.set(member.name.getText(), member.type.getText());
+          }
+        });
+      }
+    });
+
+    return properties;
+  }
 }

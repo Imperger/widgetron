@@ -117,7 +117,7 @@ onUnmounted(() => {
   <Teleport v-if="chatEnhancerWidget" :to="chatEnhancerWidget">
     <button class="open-menu-btn">
       <ToolsIcon /><TwitchMenu offset-x="-100px"
-        ><TwitchMenuItem @click="spawnQueryEditor">Query Builder</TwitchMenuItem
+        ><TwitchMenuItem @click="spawnQueryEditor">New Widget</TwitchMenuItem
         ><TwitchMenuItem>Message Interceptor</TwitchMenuItem></TwitchMenu
       >
     </button>
