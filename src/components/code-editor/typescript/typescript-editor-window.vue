@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import * as monaco from 'monaco-editor';
 import * as typescript from 'typescript';
-import { computed, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 import TypescriptEditor, {
   type ExtraLib,
@@ -42,14 +42,34 @@ let editor: monaco.editor.IStandaloneCodeEditor | null = null;
 let disposerList: monaco.IDisposable[] = [];
 let uri = '';
 
-const errors = ref<string[]>([]);
+const validationErrors = ref<string[]>([]);
+const errorMarkers = ref<string[]>([]);
 const windowHasFocus = ref(false);
 const editorHasFocus = ref(false);
 
-const saveEnabled = computed(() => errors.value.length === 0);
+onMounted(() => {
+  const onChangeMarkersDisposer = monaco.editor.onDidChangeMarkers((uris) => {
+    if (uris.every((x) => x.toString() !== editor?.getModel()?.uri.toString())) {
+      return;
+    }
+
+    const model = editor!.getModel();
+
+    errorMarkers.value = monaco.editor
+      .getModelMarkers({ resource: model?.uri })
+      .filter((x) => x.severity === monaco.MarkerSeverity.Error)
+      .map((x) => x.message);
+  });
+
+  disposerList.push(onChangeMarkersDisposer);
+});
+
+const saveEnabled = computed(
+  () => validationErrors.value.length === 0 && errorMarkers.value.length === 0,
+);
 
 const validator = (tree: typescript.SourceFile, resolve: ValidationResultResolver) =>
-  mergeValidators(errors, ...validators)(tree, resolve);
+  mergeValidators(validationErrors, ...validators)(tree, resolve);
 
 const switchModel = (language: string) => {
   const oldModel = editor!.getModel()!;
@@ -134,7 +154,7 @@ onUnmounted(() => disposerList.forEach((x) => x.dispose()));
       @initialized="onInitialized"
       @validation="validator"
     />
-    <ErrorLog :logs="errors" />
+    <ErrorLog :logs="errorMarkers" />
   </FloatingWindow>
 </template>
 
