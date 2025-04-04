@@ -30,7 +30,6 @@ const chatEnhancerWidget = ref<HTMLElement | null>(null);
 let nextEditorId = 0;
 const queryEditors = ref<EditorInstance[]>([]);
 
-let nextWidgetPreviewId = 0;
 const widgetPreviews = ref<WidgetPreview[]>([]);
 
 const closeWidget = (id: number) => {
@@ -98,11 +97,17 @@ const closeQueryEditor = (id: number) => {
   }
 };
 
-const onExecute = async (editor: monaco.editor.IStandaloneCodeEditor) => {
+const onExecute = async (editor: EditorInstance) => {
+  const previewWidgetIdx = widgetPreviews.value.findIndex((x) => x.id === editor.id);
+
+  if (previewWidgetIdx !== -1) {
+    widgetPreviews.value.splice(previewWidgetIdx, 1);
+  }
+
   widgetPreviews.value.push({
-    id: nextWidgetPreviewId++,
+    id: editor.id,
     updatePeriod: 1000,
-    sourceCode: editor.getValue(),
+    sourceCode: editor.instance!.getValue(),
   });
 };
 
@@ -133,7 +138,7 @@ onUnmounted(() => {
     ]"
     @initialized="(x) => onInitialized(x, editor.id)"
     @save="onSave"
-    @preview="onExecute(editor.instance!)"
+    @preview="onExecute(editor)"
     @close="() => closeQueryEditor(editor.id)"
   />
   <FloatingWidget

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import * as ts from 'typescript';
-import { computed, onMounted, onUnmounted, ref, toRaw } from 'vue';
+import { computed, onUnmounted, ref, toRaw, watch } from 'vue';
 
 import type { OnlyUIInputProperties } from './input/only-ui-input-properties';
 import type { UIInputComponent } from './input/ui-input-component';
@@ -42,6 +42,7 @@ const model = ref<WidgetModel | null>(null);
 const worker = new SafeTaskRunner(QueryWorker);
 
 let unmounted = false;
+let isRunning = false;
 
 const setupUIInput = async (sourceFile: ts.SourceFile) => {
   const properties = TypescriptExtractor.interfaceProperties(sourceFile, 'UIInput');
@@ -85,15 +86,27 @@ const uploadCode = async (sourceFile: ts.SourceFile) => {
   }
 };
 
-onMounted(async () => {
+const setup = async () => {
   const sourceFile = ts.createSourceFile('main.ts', sourceCode, ts.ScriptTarget.Latest, true);
 
   uiInput.value = await setupUIInput(sourceFile);
 
   await uploadCode(sourceFile);
+};
 
-  onExecute();
-});
+watch(
+  () => sourceCode,
+  async () => {
+    await setup();
+
+    if (!isRunning) {
+      isRunning = true;
+
+      onExecute();
+    }
+  },
+  { immediate: true },
+);
 
 const onExecute = async () => {
   try {
@@ -101,6 +114,8 @@ const onExecute = async () => {
 
     setTimeout(() => onExecute(), updatePeriod);
   } catch (e) {
+    isRunning = false;
+
     if (unmounted) {
       return;
     }
