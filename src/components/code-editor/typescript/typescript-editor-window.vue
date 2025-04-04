@@ -154,11 +154,16 @@ onUnmounted(() => disposerList.forEach((x) => x.dispose()));
       @initialized="onInitialized"
       @validation="validator"
     />
-    <ErrorLog :logs="errorMarkers" />
+    <ErrorLog :logs="errorMarkers" class="error-log" />
   </FloatingWindow>
 </template>
 
 <style scoped>
+.error-log {
+  height: 84px;
+  overflow: auto;
+}
+
 .foreground-window {
   z-index: 1001;
 }
