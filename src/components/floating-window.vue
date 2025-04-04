@@ -45,19 +45,16 @@ let isAppliedFadeTimer = -1;
 
 let resizeObserver: ResizeObserver | null = null;
 
-let isDragging = false;
 let startDraggingPos: MousePos = { x: 0, y: 0 };
 
 const onDragStart = (e: MouseEvent) => {
-  isDragging = true;
   startDraggingPos = { x: e.pageX, y: e.pageY };
+
+  document.addEventListener('mouseup', onDragStop);
+  document.addEventListener('mousemove', onDrag);
 };
 
 const onDrag = (e: MouseEvent) => {
-  if (!isDragging) {
-    return;
-  }
-
   left.value += e.pageX - startDraggingPos.x;
   top.value += e.pageY - startDraggingPos.y;
 
@@ -65,7 +62,8 @@ const onDrag = (e: MouseEvent) => {
 };
 
 const onDragStop = () => {
-  isDragging = false;
+  document.removeEventListener('mousemove', onDrag);
+  document.removeEventListener('mouseup', onDragStop);
 };
 
 const style = computed(() => ({
@@ -108,6 +106,9 @@ onMounted(() => {
 
 onUnmounted(() => {
   resizeObserver?.disconnect();
+
+  document.removeEventListener('mousemove', onDrag);
+  document.removeEventListener('mouseup', onDragStop);
 });
 </script>
 
@@ -118,13 +119,7 @@ onUnmounted(() => {
     :class="{ 'floating-window-resizable': resizable }"
     :style="style"
   >
-    <div
-      @mousedown="onDragStart"
-      @mousemove="onDrag"
-      @mouseup="onDragStop"
-      @mouseleave="onDragStop"
-      class="title-bar"
-    >
+    <div @mousedown="onDragStart" class="title-bar">
       <button
         v-if="saveBtnShown"
         :disabled="!saveEnabled"
