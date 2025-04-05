@@ -1,5 +1,5 @@
 import { createPinia } from 'pinia';
-import { createApp } from 'vue';
+import { createApp, ref } from 'vue';
 
 import App from './App.vue';
 import { db } from './db/db';
@@ -12,6 +12,8 @@ import { WebsocketInterceptor } from './lib/interceptors/network-interceptor/web
 import { MountPointMaintainer } from './lib/mount-point-maintainer';
 import { waitUntil } from './lib/wait-until';
 import router from './router';
+
+import type { WidgetInstance } from '@/widget/widget-instance';
 
 function createMountingPoint() {
   const mountingPoint = document.createElement('div');
@@ -43,6 +45,7 @@ function createMountingPoint() {
   app.provide('chatInterceptor', chatInterceptor);
   app.provide('bodyMountPointMaintainer', new MountPointMaintainer(document.body));
   app.provide('db', new ExtensionDB(db));
+  app.provide('widgets', ref<WidgetInstance[]>([]));
 
   app.use(createPinia());
   app.use(router);

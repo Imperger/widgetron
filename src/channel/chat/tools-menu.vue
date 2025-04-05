@@ -1,18 +1,21 @@
 <script setup lang="ts">
 import * as monaco from 'monaco-editor';
-import { inject, markRaw, onMounted, onUnmounted, ref } from 'vue';
+import { inject, markRaw, onMounted, onUnmounted, ref, type Ref } from 'vue';
 
 import TypescriptEditorWindow from '@/components/code-editor/typescript/typescript-editor-window.vue';
 import type { ExtraLib } from '@/components/code-editor/typescript/typescript-editor.vue';
 import { requireFunctionValidator } from '@/components/code-editor/typescript/validators/require-function-validator';
+import DeleteIcon from '@/components/icons/delete-icon.vue';
 import ToolsIcon from '@/components/icons/tools-icon.vue';
 import TwitchMenuItem from '@/components/twitch/twitch-menu/twitch-menu-item.vue';
 import TwitchMenu from '@/components/twitch/twitch-menu/twitch-menu.vue';
-import type { ExtensionDB } from '@/extension-db';
+import type { WidgetInfo, ExtensionDB } from '@/extension-db';
+import { cssVar } from '@/lib/css-var';
 import type { MountPointMaintainer, MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 import { ExternalLibCache } from '@/lib/typescript/external-lib-cache';
 import FloatingWidget from '@/widget/floating-widget.vue';
 import MyWidgetLabelDialog from '@/widget/my-widget-label-dialog.vue';
+import type { WidgetInstance } from '@/widget/widget-instance';
 
 interface EditorInstance {
   id: number;
@@ -37,6 +40,10 @@ const widgetPreviews = ref<WidgetPreview[]>([]);
 
 const setWidgetLabelDialogShown = ref(false);
 
+const widgetList = ref<WidgetInfo[]>([]);
+
+const widgets: Ref<WidgetInstance[]> = inject('widgets')!;
+
 const closeWidget = (id: number) => {
   const closeIdx = widgetPreviews.value.findIndex((x) => x.id === id);
 
@@ -59,13 +66,16 @@ async function onUISetup(): Promise<UIInput> {
 async function onQuery(db: AppDB, input: UIInput): Promise<WidgetModel> {
 }`;
 
-onMounted(() => {
+onMounted(async () => {
   mountPointWatchReleaser = mountPointMaintainer.watch(
     (x) => x.querySelector('.stream-chat-header'),
     (x) => (chatEnhancerWidget.value = x),
   );
+
+  widgetList.value = await db.allWidgets();
 });
-const spawnQueryEditor = async () => {
+
+const spawnWidgetEditor = async () => {
   queryEditors.value.push({
     id: nextEditorId++,
     instance: null,
@@ -131,9 +141,40 @@ const onSetWidgetLabelCancel = () => {
 const onSetWidgetLabelOk = async (label: string) => {
   setWidgetLabelDialogShown.value = false;
 
-  if (savingEditor !== null) {
-    await db.saveWidget(label, savingEditor.instance!.getValue());
-    savingEditor = null;
+  if (savingEditor === null) {
+    return;
+  }
+
+  const id = await db.saveWidget(label, savingEditor.instance!.getValue());
+
+  widgetList.value.push({ id, label });
+
+  savingEditor = null;
+};
+
+let nextWidgetId = 0;
+
+const spawnWidget = async (id: number) => {
+  const widget = await db.findWidget(id);
+
+  if (widget !== null) {
+    widgets.value.push({
+      key: nextWidgetId++,
+      id: widget.id,
+      label: widget.label,
+      sourceCode: widget.content,
+      updatePeriod: 1000,
+    });
+  }
+};
+
+const deleteWidget = async (id: number) => {
+  await db.deleteWidget(id);
+
+  const deleteIdx = widgetList.value.findIndex((x) => x.id === id);
+
+  if (deleteIdx !== -1) {
+    widgetList.value.splice(deleteIdx, 1);
   }
 };
 
@@ -146,9 +187,18 @@ onUnmounted(() => {
   <Teleport v-if="chatEnhancerWidget" :to="chatEnhancerWidget">
     <button class="open-menu-btn">
       <ToolsIcon /><TwitchMenu offset-x="-100px"
-        ><TwitchMenuItem @click="spawnQueryEditor">New Widget</TwitchMenuItem
-        ><TwitchMenuItem>Message Interceptor</TwitchMenuItem></TwitchMenu
-      >
+        ><TwitchMenuItem @click="spawnWidgetEditor">New Widget</TwitchMenuItem
+        ><TwitchMenuItem
+          v-for="widget in widgetList"
+          :key="widget.id"
+          @click="spawnWidget(widget.id)"
+          class="widget-menu-item"
+          ><span class="widget-menu-label">{{ widget.label }}</span
+          ><button @click.stop="deleteWidget(widget.id)">
+            <DeleteIcon
+              :color="cssVar('color-border-toggle-checked') ?? undefined"
+            /></button></TwitchMenuItem
+      ></TwitchMenu>
     </button>
   </Teleport>
   <TypescriptEditorWindow
@@ -188,5 +238,16 @@ onUnmounted(() => {
 
 .open-menu-btn:hover {
   background-color: var(--color-background-button-text-hover);
+}
+
+.widget-menu-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.widget-menu-label {
+  margin-right: 5px;
 }
 </style>

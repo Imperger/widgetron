@@ -1,5 +1,11 @@
 import type AppDB from './db/app-db';
+import type { WidgetSourceCode } from './db/widget-source-code';
 import type { ChatMessage } from './lib/interceptors/network-interceptor/chat-interceptor';
+
+export interface WidgetInfo {
+  id: number;
+  label: string;
+}
 
 export class ExtensionDB {
   constructor(private readonly db: AppDB) {}
@@ -15,12 +21,22 @@ export class ExtensionDB {
     }
   }
 
-  async saveWidget(label: string, sourceCode: string, id?: number): Promise<void> {
+  async saveWidget(label: string, sourceCode: string, id?: number): Promise<number> {
     try {
-      await this.db.widgets.add({ id, label, content: sourceCode });
+      return await this.db.widgets.add({ id, label, content: sourceCode });
     } catch (e) {
       console.error(e);
     }
+
+    return -1;
+  }
+
+  async allWidgets(): Promise<WidgetInfo[]> {
+    return (await this.db.widgets.toArray()).map((x) => ({ id: x.id, label: x.label }));
+  }
+
+  async findWidget(id: number): Promise<WidgetSourceCode | null> {
+    return (await this.db.widgets.get(id)) ?? null;
   }
 
   async deleteWidget(id: number): Promise<void> {
