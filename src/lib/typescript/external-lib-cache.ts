@@ -42,6 +42,13 @@ export class ExternalLibCache {
       );
 
       ExternalLibCache.appDBCode += await ExternalLibCache.load(
+        'widget-source-code.ts',
+        import.meta.glob('/src/db/widget-source-code.ts', { as: 'raw' }),
+        [{ type: 'class', name: 'WidgetSourceCode' }],
+        ['remove-export'],
+      );
+
+      ExternalLibCache.appDBCode += await ExternalLibCache.load(
         'app-db.ts',
         import.meta.glob('/src/db/app-db.ts', { as: 'raw' }),
         [{ type: 'class', name: 'AppDB' }],

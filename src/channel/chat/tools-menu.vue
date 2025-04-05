@@ -8,9 +8,11 @@ import { requireFunctionValidator } from '@/components/code-editor/typescript/va
 import ToolsIcon from '@/components/icons/tools-icon.vue';
 import TwitchMenuItem from '@/components/twitch/twitch-menu/twitch-menu-item.vue';
 import TwitchMenu from '@/components/twitch/twitch-menu/twitch-menu.vue';
+import type { ExtensionDB } from '@/extension-db';
 import type { MountPointMaintainer, MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 import { ExternalLibCache } from '@/lib/typescript/external-lib-cache';
 import FloatingWidget from '@/widget/floating-widget.vue';
+import MyWidgetLabelDialog from '@/widget/my-widget-label-dialog.vue';
 
 interface EditorInstance {
   id: number;
@@ -24,6 +26,7 @@ interface WidgetPreview {
   sourceCode: string;
 }
 
+const db: ExtensionDB = inject('db')!;
 const mountPointMaintainer = inject<MountPointMaintainer>('bodyMountPointMaintainer')!;
 const chatEnhancerWidget = ref<HTMLElement | null>(null);
 
@@ -31,6 +34,8 @@ let nextEditorId = 0;
 const queryEditors = ref<EditorInstance[]>([]);
 
 const widgetPreviews = ref<WidgetPreview[]>([]);
+
+const setWidgetLabelDialogShown = ref(false);
 
 const closeWidget = (id: number) => {
   const closeIdx = widgetPreviews.value.findIndex((x) => x.id === id);
@@ -111,7 +116,26 @@ const onExecute = async (editor: EditorInstance) => {
   });
 };
 
-const onSave = () => {};
+let savingEditor: EditorInstance | null = null;
+
+const onSave = (editor: EditorInstance) => {
+  setWidgetLabelDialogShown.value = true;
+  savingEditor = editor;
+};
+
+const onSetWidgetLabelCancel = () => {
+  setWidgetLabelDialogShown.value = false;
+  savingEditor = null;
+};
+
+const onSetWidgetLabelOk = async (label: string) => {
+  setWidgetLabelDialogShown.value = false;
+
+  if (savingEditor !== null) {
+    await db.saveWidget(label, savingEditor.instance!.getValue());
+    savingEditor = null;
+  }
+};
 
 onUnmounted(() => {
   mountPointWatchReleaser?.();
@@ -137,7 +161,7 @@ onUnmounted(() => {
       requireFunctionValidator('onQuery', ['AppDB', 'UIInput'], 'Promise<WidgetModel>'),
     ]"
     @initialized="(x) => onInitialized(x, editor.id)"
-    @save="onSave"
+    @save="onSave(editor)"
     @preview="onExecute(editor)"
     @close="() => closeQueryEditor(editor.id)"
   />
@@ -147,6 +171,11 @@ onUnmounted(() => {
     :update-period="widget.updatePeriod"
     :source-code="widget.sourceCode"
     @close="closeWidget(widget.id)"
+  />
+  <MyWidgetLabelDialog
+    v-model:show="setWidgetLabelDialogShown"
+    @ok="onSetWidgetLabelOk"
+    @cancel="onSetWidgetLabelCancel"
   />
 </template>
 
