@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import * as monaco from 'monaco-editor';
-import { inject, markRaw, onMounted, onUnmounted, ref, type Ref } from 'vue';
+import { computed, inject, markRaw, onMounted, onUnmounted, ref, type Ref } from 'vue';
 
 import TypescriptEditorWindow from '@/components/code-editor/typescript/typescript-editor-window.vue';
 import type { ExtraLib } from '@/components/code-editor/typescript/typescript-editor.vue';
@@ -19,13 +19,11 @@ import MyWidgetLabelDialog from '@/widget/my-widget-label-dialog.vue';
 import type { WidgetInstance } from '@/widget/widget-instance';
 
 interface EditorInstance {
-  id: number;
   instance: monaco.editor.IStandaloneCodeEditor | null;
   extraLibs?: ExtraLib[];
 }
 
 interface WidgetPreview {
-  id: number;
   updatePeriod: number;
   sourceCode: string;
 }
@@ -34,24 +32,14 @@ const db: ExtensionDB = inject('db')!;
 const mountPointMaintainer = inject<MountPointMaintainer>('bodyMountPointMaintainer')!;
 const chatEnhancerWidget = ref<HTMLElement | null>(null);
 
-let nextEditorId = 0;
-const queryEditors = ref<EditorInstance[]>([]);
-
-const widgetPreviews = ref<WidgetPreview[]>([]);
+const widgetEditor = ref<EditorInstance | null>(null);
+const widgetPreview = ref<WidgetPreview | null>(null);
 
 const setWidgetLabelDialogShown = ref(false);
 
 const widgetList = ref<WidgetInfo[]>([]);
 
 const widgets: Ref<WidgetInstance[]> = inject('widgets')!;
-
-const closeWidget = (id: number) => {
-  const closeIdx = widgetPreviews.value.findIndex((x) => x.id === id);
-
-  if (closeIdx !== -1) {
-    widgetPreviews.value.splice(closeIdx, 1);
-  }
-};
 
 let mountPointWatchReleaser: MountPointWatchReleaser | null = null;
 
@@ -77,8 +65,7 @@ onMounted(async () => {
 });
 
 const spawnWidgetEditor = async () => {
-  queryEditors.value.push({
-    id: nextEditorId++,
+  widgetEditor.value = {
     instance: null,
     extraLibs: [
       {
@@ -98,59 +85,43 @@ const spawnWidgetEditor = async () => {
         filePath: `widget-input.d.ts`,
       },
     ],
-  });
+  };
 };
 
-const onInitialized = (instance: monaco.editor.IStandaloneCodeEditor, id: number) => {
-  queryEditors.value.find((x) => x.id === id)!.instance = markRaw(instance);
+const onInitialized = (instance: monaco.editor.IStandaloneCodeEditor) => {
+  widgetEditor.value!.instance = markRaw(instance);
 };
 
-const closeQueryEditor = (id: number) => {
-  const idx = queryEditors.value.findIndex((x) => x.id === id);
-
-  if (idx !== -1) {
-    queryEditors.value.splice(idx, 1);
-  }
+const closeWidgetEditor = () => {
+  widgetEditor.value = null;
+  widgetPreview.value = null;
 };
 
-const onExecute = async (editor: EditorInstance) => {
-  const previewWidgetIdx = widgetPreviews.value.findIndex((x) => x.id === editor.id);
+const closeWidgetPreview = () => {
+  widgetPreview.value = null;
+};
 
-  if (previewWidgetIdx !== -1) {
-    widgetPreviews.value.splice(previewWidgetIdx, 1);
-  }
-
-  widgetPreviews.value.push({
-    id: editor.id,
+const onExecute = async () => {
+  widgetPreview.value = {
     updatePeriod: 1000,
-    sourceCode: editor.instance!.getValue(),
-  });
+    sourceCode: widgetEditor.value!.instance!.getValue(),
+  };
 };
 
-let savingEditor: EditorInstance | null = null;
-
-const onSave = (editor: EditorInstance) => {
+const onSave = () => {
   setWidgetLabelDialogShown.value = true;
-  savingEditor = editor;
 };
 
 const onSetWidgetLabelCancel = () => {
   setWidgetLabelDialogShown.value = false;
-  savingEditor = null;
 };
 
 const onSetWidgetLabelOk = async (label: string) => {
   setWidgetLabelDialogShown.value = false;
 
-  if (savingEditor === null) {
-    return;
-  }
-
-  const id = await db.saveWidget(label, savingEditor.instance!.getValue());
+  const id = await db.saveWidget(label, widgetEditor.value!.instance!.getValue());
 
   widgetList.value.push({ id, label });
-
-  savingEditor = null;
 };
 
 let nextWidgetId = 0;
@@ -179,6 +150,8 @@ const deleteWidget = async (id: number) => {
   }
 };
 
+const isWidgetEditorOpened = computed(() => widgetEditor.value !== null);
+
 onUnmounted(() => {
   mountPointWatchReleaser?.();
 });
@@ -188,7 +161,9 @@ onUnmounted(() => {
   <Teleport v-if="chatEnhancerWidget" :to="chatEnhancerWidget">
     <button class="open-menu-btn">
       <ToolsIcon /><TwitchMenu offset-x="-100px"
-        ><TwitchMenuItem @click="spawnWidgetEditor">New Widget</TwitchMenuItem>
+        ><TwitchMenuItem @click="spawnWidgetEditor" :disabled="isWidgetEditorOpened"
+          >New Widget</TwitchMenuItem
+        >
         <TwitchMenuItemDivider />
         <TwitchMenuItem
           v-for="widget in widgetList"
@@ -204,25 +179,23 @@ onUnmounted(() => {
     </button>
   </Teleport>
   <TypescriptEditorWindow
-    v-for="editor of queryEditors"
-    :key="editor.id"
-    :extraLibs="editor.extraLibs"
+    v-if="widgetEditor"
+    :extraLibs="widgetEditor.extraLibs"
     :placeholder="placeholder"
     :validators="[
       requireFunctionValidator('onUISetup', [], 'Promise<UIInput>'),
       requireFunctionValidator('onQuery', ['AppDB', 'UIInput'], 'Promise<WidgetModel>'),
     ]"
-    @initialized="(x) => onInitialized(x, editor.id)"
-    @save="onSave(editor)"
-    @preview="onExecute(editor)"
-    @close="() => closeQueryEditor(editor.id)"
+    @initialized="(x) => onInitialized(x)"
+    @save="onSave()"
+    @preview="onExecute()"
+    @close="() => closeWidgetEditor()"
   />
   <FloatingWidget
-    v-for="widget in widgetPreviews"
-    :key="widget.id"
-    :update-period="widget.updatePeriod"
-    :source-code="widget.sourceCode"
-    @close="closeWidget(widget.id)"
+    v-if="widgetPreview"
+    :update-period="widgetPreview.updatePeriod"
+    :source-code="widgetPreview.sourceCode"
+    @close="closeWidgetPreview()"
   />
   <MyWidgetLabelDialog
     v-model:show="setWidgetLabelDialogShown"

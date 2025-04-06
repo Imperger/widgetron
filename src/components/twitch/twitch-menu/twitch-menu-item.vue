@@ -5,13 +5,14 @@ import type { MenuRoot } from './twitch-menu.vue';
 
 export interface TwitchMenuItemProps {
   closeOnClick?: boolean;
+  disabled?: boolean;
 }
 
 export interface TwitchMenuItemEvents {
   (e: 'click'): void;
 }
 
-const { closeOnClick = true } = defineProps<TwitchMenuItemProps>();
+const { closeOnClick = true, disabled = false } = defineProps<TwitchMenuItemProps>();
 
 const emit = defineEmits<TwitchMenuItemEvents>();
 
@@ -26,7 +27,9 @@ const onClick = () => {
 };
 </script>
 <template>
-  <div @click="onClick" class="menu-item"><slot></slot></div>
+  <div @click="onClick" :class="{ 'menu-item-disabled': disabled }" class="menu-item">
+    <slot></slot>
+  </div>
 </template>
 
 <style scope>
@@ -35,5 +38,10 @@ const onClick = () => {
   padding: 0.5rem;
   text-wrap: nowrap;
   cursor: pointer;
+}
+
+.menu-item-disabled {
+  color: var(--color-text-button-disabled);
+  pointer-events: none;
 }
 </style>

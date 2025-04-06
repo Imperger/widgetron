@@ -37,10 +37,8 @@ const {
 
 const emit = defineEmits<TypescriptEditorWindowEvents>();
 
-let isMouseOver = false;
 let editor: monaco.editor.IStandaloneCodeEditor | null = null;
 let disposerList: monaco.IDisposable[] = [];
-let uri = '';
 
 const validationErrors = ref<string[]>([]);
 const errorMarkers = ref<string[]>([]);
@@ -48,6 +46,8 @@ const windowHasFocus = ref(false);
 const editorHasFocus = ref(false);
 
 onMounted(() => {
+  monaco.languages.typescript.typescriptDefaults.setExtraLibs(extraLibs);
+
   const onChangeMarkersDisposer = monaco.editor.onDidChangeMarkers((uris) => {
     if (uris.every((x) => x.toString() !== editor?.getModel()?.uri.toString())) {
       return;
@@ -71,24 +71,8 @@ const saveEnabled = computed(
 const validator = (tree: typescript.SourceFile, resolve: ValidationResultResolver) =>
   mergeValidators(validationErrors, ...validators)(tree, resolve);
 
-const switchModel = (language: string) => {
-  const oldModel = editor!.getModel()!;
-
-  editor!.setModel(
-    monaco.editor.createModel(
-      oldModel.getValue(),
-      language,
-      monaco.Uri.parse(`${uri}.${Date.now()}`),
-    ),
-  );
-
-  oldModel!.dispose();
-};
-
 const onInitialized = (instance: monaco.editor.IStandaloneCodeEditor) => {
   editor = instance;
-
-  uri = editor!.getModel()!.uri.toString();
 
   const onFocusDisposer = editor.onDidFocusEditorWidget(() => (editorHasFocus.value = true));
   const onBlurDisposer = editor.onDidBlurEditorWidget(() => (editorHasFocus.value = false));
@@ -96,24 +80,6 @@ const onInitialized = (instance: monaco.editor.IStandaloneCodeEditor) => {
   disposerList = [onFocusDisposer, onBlurDisposer];
 
   emit('initialized', instance);
-};
-
-const onMouseOver = () => {
-  if (isMouseOver) {
-    return;
-  }
-
-  monaco.languages.typescript.typescriptDefaults.setExtraLibs(extraLibs);
-
-  queueMicrotask(() => switchModel('typescript'));
-
-  isMouseOver = true;
-};
-
-const onMouseLeave = () => {
-  switchModel('ts2');
-
-  isMouseOver = false;
 };
 
 const onClose = () => {
@@ -142,8 +108,6 @@ onUnmounted(() => disposerList.forEach((x) => x.dispose()));
     @save="() => emit('save')"
     @preview="() => emit('preview')"
     @close="onClose"
-    @mouseover="onMouseOver"
-    @mouseleave="onMouseLeave"
     @focus="onFocus"
     @blur="onBlur"
     :class="{ 'foreground-window': hasFocus }"
