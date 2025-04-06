@@ -4,8 +4,8 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import { computed, inject, onMounted, onUnmounted, ref, watchEffect, type ComputedRef } from 'vue';
 import { useRoute } from 'vue-router';
 
-import type { GQLInterceptor } from '@/lib/interceptors/network-interceptor/gql-interceptor';
-import { MountPointMaintainer, type MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
+import { bodyMountPointMaintainerToken, gqlInterceptorToken } from '@/injection-tokens';
+import { type MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
 import type { ChatRestrictions } from '@/lib/types/gql/response/chat-restrictions';
 import { useFollowingStore } from '@/stores/following-store';
@@ -16,8 +16,8 @@ const route = useRoute();
 const followedAtTimestamp = ref(0);
 const followingStore = useFollowingStore();
 const followedWidget = ref<HTMLElement | null>(null);
-const gqlInterceptor: GQLInterceptor = inject('gqlInterceptor')!;
-const mountPointMaintainer = inject<MountPointMaintainer>('bodyMountPointMaintainer')!;
+const gqlInterceptor = inject(gqlInterceptorToken)!;
+const mountPointMaintainer = inject(bodyMountPointMaintainerToken)!;
 let mountPointWatchReleaser: MountPointWatchReleaser | null = null;
 
 const chatRestrictionsUnsub = gqlInterceptor.subscribe(

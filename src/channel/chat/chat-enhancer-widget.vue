@@ -4,14 +4,11 @@ import { inject, onUnmounted } from 'vue';
 import SettingsExtension from './settings-extension.vue';
 import ToolsMenu from './tools-menu.vue';
 
-import type { ExtensionDB } from '@/extension-db';
-import {
-  type ChatInterceptor,
-  type ChatMessage,
-} from '@/lib/interceptors/network-interceptor/chat-interceptor';
+import { chatInterceptorToken, dbToken } from '@/injection-tokens';
+import { type ChatMessage } from '@/lib/interceptors/network-interceptor/chat-interceptor';
 
-const db: ExtensionDB = inject('db')!;
-const chatInterceptor: ChatInterceptor = inject('chatInterceptor')!;
+const db = inject(dbToken)!;
+const chatInterceptor = inject(chatInterceptorToken)!;
 
 const chatMessagesUnsub = chatInterceptor.subscribe<ChatMessage>('PRIVMSG', (x) => {
   console.log(x);

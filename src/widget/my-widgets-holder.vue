@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { inject, type Ref } from 'vue';
+import { inject } from 'vue';
 
 import FloatingWidget from './floating-widget.vue';
-import type { WidgetInstance } from './widget-instance';
 
-const widgets: Ref<WidgetInstance[]> = inject('widgets')!;
+import { widgetsToken } from '@/injection-tokens';
+
+const widgets = inject(widgetsToken)!;
 
 const closeWidget = (key: number) => {
   const closeIdx = widgets.value.findIndex((x) => x.key === key);

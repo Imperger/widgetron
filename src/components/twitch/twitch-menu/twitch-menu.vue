@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, provide, ref, type Ref } from 'vue';
 
+import { menuRootToken } from './injection-tokens';
+
 import { onClickOutside, type OnListOutsideDeactivator } from '@/lib/on-click-outside';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
 
@@ -18,7 +20,7 @@ const componentRef = ref<HTMLElement | null>(null);
 const isShown = ref(false);
 let onClickOutsideDeactivator: OnListOutsideDeactivator | null = null;
 
-provide('menuRoot', { isShown });
+provide(menuRootToken, { isShown });
 
 onMounted(() => {
   componentRef.value?.parentElement?.addEventListener('click', onTriggerClick);

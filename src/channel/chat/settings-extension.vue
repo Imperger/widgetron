@@ -7,17 +7,17 @@ import { parsingErorValidator as parsingEror } from '@/components/code-editor/cs
 import { requireClassValidator as requireClass } from '@/components/code-editor/css/validators/require-class-validator';
 import GearIcon from '@/components/icons/gear-icon.vue';
 import TwitchToggle from '@/components/twitch/twitch-toggle.vue';
+import { bodyMountPointMaintainerToken, chatInterceptorToken } from '@/injection-tokens';
 import { CssInjector } from '@/lib/css-injector';
 import type {
-  ChatInterceptor,
   ClearChatCommand,
   ClearMsgCommand,
 } from '@/lib/interceptors/network-interceptor/chat-interceptor';
-import type { MountPointMaintainer, MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
+import type { MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 import { useSettingsStore } from '@/stores/settings-store';
 
-const chatInterceptor: ChatInterceptor = inject('chatInterceptor')!;
-const mountPointMaintainer = inject<MountPointMaintainer>('bodyMountPointMaintainer')!;
+const chatInterceptor = inject(chatInterceptorToken)!;
+const mountPointMaintainer = inject(bodyMountPointMaintainerToken)!;
 const settingsStore = useSettingsStore();
 const dontHideDeletedMessagedMountPoint = ref<HTMLElement | null>(null);
 let mountPointWatchReleaser: MountPointWatchReleaser | null = null;

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import * as monaco from 'monaco-editor';
-import { computed, inject, markRaw, onMounted, onUnmounted, ref, type Ref } from 'vue';
+import { computed, inject, markRaw, onMounted, onUnmounted, ref } from 'vue';
 
 import TypescriptEditorWindow from '@/components/code-editor/typescript/typescript-editor-window.vue';
 import type { ExtraLib } from '@/components/code-editor/typescript/typescript-editor.vue';
@@ -10,13 +10,13 @@ import ToolsIcon from '@/components/icons/tools-icon.vue';
 import TwitchMenuItemDivider from '@/components/twitch/twitch-menu/twitch-menu-item-divider.vue';
 import TwitchMenuItem from '@/components/twitch/twitch-menu/twitch-menu-item.vue';
 import TwitchMenu from '@/components/twitch/twitch-menu/twitch-menu.vue';
-import type { WidgetInfo, ExtensionDB } from '@/extension-db';
+import type { WidgetInfo } from '@/extension-db';
+import { bodyMountPointMaintainerToken, dbToken, widgetsToken } from '@/injection-tokens';
 import { cssVar } from '@/lib/css-var';
-import type { MountPointMaintainer, MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
+import type { MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 import { ExternalLibCache } from '@/lib/typescript/external-lib-cache';
 import FloatingWidget from '@/widget/floating-widget.vue';
 import MyWidgetLabelDialog from '@/widget/my-widget-label-dialog.vue';
-import type { WidgetInstance } from '@/widget/widget-instance';
 
 interface EditorInstance {
   instance: monaco.editor.IStandaloneCodeEditor | null;
@@ -28,8 +28,10 @@ interface WidgetPreview {
   sourceCode: string;
 }
 
-const db: ExtensionDB = inject('db')!;
-const mountPointMaintainer = inject<MountPointMaintainer>('bodyMountPointMaintainer')!;
+const db = inject(dbToken)!;
+const mountPointMaintainer = inject(bodyMountPointMaintainerToken)!;
+const widgets = inject(widgetsToken)!;
+
 const chatEnhancerWidget = ref<HTMLElement | null>(null);
 
 const widgetEditor = ref<EditorInstance | null>(null);
@@ -38,8 +40,6 @@ const widgetPreview = ref<WidgetPreview | null>(null);
 const setWidgetLabelDialogShown = ref(false);
 
 const widgetList = ref<WidgetInfo[]>([]);
-
-const widgets: Ref<WidgetInstance[]> = inject('widgets')!;
 
 let mountPointWatchReleaser: MountPointWatchReleaser | null = null;
 

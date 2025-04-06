@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { inject } from 'vue';
 
-import type { MenuRoot } from './twitch-menu.vue';
+import { menuRootToken } from './injection-tokens';
 
 export interface TwitchMenuItemProps {
   closeOnClick?: boolean;
@@ -16,7 +16,7 @@ const { closeOnClick = true, disabled = false } = defineProps<TwitchMenuItemProp
 
 const emit = defineEmits<TwitchMenuItemEvents>();
 
-const menuRoot: MenuRoot = inject('menuRoot')!;
+const menuRoot = inject(menuRootToken)!;
 
 const onClick = () => {
   if (closeOnClick) {
