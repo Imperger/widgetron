@@ -7,6 +7,7 @@ import type { ExtraLib } from '@/components/code-editor/typescript/typescript-ed
 import { requireFunctionValidator } from '@/components/code-editor/typescript/validators/require-function-validator';
 import DeleteIcon from '@/components/icons/delete-icon.vue';
 import ToolsIcon from '@/components/icons/tools-icon.vue';
+import TwitchMenuItemDivider from '@/components/twitch/twitch-menu/twitch-menu-item-divider.vue';
 import TwitchMenuItem from '@/components/twitch/twitch-menu/twitch-menu-item.vue';
 import TwitchMenu from '@/components/twitch/twitch-menu/twitch-menu.vue';
 import type { WidgetInfo, ExtensionDB } from '@/extension-db';
@@ -187,14 +188,15 @@ onUnmounted(() => {
   <Teleport v-if="chatEnhancerWidget" :to="chatEnhancerWidget">
     <button class="open-menu-btn">
       <ToolsIcon /><TwitchMenu offset-x="-100px"
-        ><TwitchMenuItem @click="spawnWidgetEditor">New Widget</TwitchMenuItem
-        ><TwitchMenuItem
+        ><TwitchMenuItem @click="spawnWidgetEditor">New Widget</TwitchMenuItem>
+        <TwitchMenuItemDivider />
+        <TwitchMenuItem
           v-for="widget in widgetList"
           :key="widget.id"
           @click="spawnWidget(widget.id)"
           class="widget-menu-item"
           ><span class="widget-menu-label">{{ widget.label }}</span
-          ><button @click.stop="deleteWidget(widget.id)">
+          ><button @click.stop="deleteWidget(widget.id)" class="widget-menu-delete-btn">
             <DeleteIcon
               :color="cssVar('color-border-toggle-checked') ?? undefined"
             /></button></TwitchMenuItem
@@ -248,6 +250,10 @@ onUnmounted(() => {
 }
 
 .widget-menu-label {
-  margin-right: 5px;
+  margin-right: 10px;
+}
+
+.widget-menu-delete-btn {
+  display: flex;
 }
 </style>
