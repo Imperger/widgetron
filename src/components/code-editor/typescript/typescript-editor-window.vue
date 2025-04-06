@@ -11,6 +11,8 @@ import { mergeValidators, type Validator } from './validators/merge-validators';
 
 import ErrorLog from '@/components/code-editor/error-log.vue';
 import FloatingWindow from '@/components/floating-window.vue';
+import PlayIcon from '@/components/icons/play-icon.vue';
+import TickIcon from '@/components/icons/tick-icon.vue';
 
 export interface TypescriptEditorWindowProps {
   title?: string;
@@ -68,6 +70,9 @@ const saveEnabled = computed(
   () => validationErrors.value.length === 0 && errorMarkers.value.length === 0,
 );
 
+const saveIconColor = computed(() => (saveEnabled.value ? '#ffffff' : '#e877e8'));
+const previewIconColor = computed(() => (saveEnabled.value ? '#ffffff' : '#e877e8'));
+
 const validator = (tree: typescript.SourceFile, resolve: ValidationResultResolver) =>
   mergeValidators(validationErrors, ...validators)(tree, resolve);
 
@@ -105,14 +110,20 @@ onUnmounted(() => disposerList.forEach((x) => x.dispose()));
     :preview-enabled="saveEnabled"
     v-model:left="left"
     v-model:top="top"
-    @save="() => emit('save')"
-    @preview="() => emit('preview')"
     @close="onClose"
     @focus="onFocus"
     @blur="onBlur"
     :class="{ 'foreground-window': hasFocus }"
     style="background-color: white"
   >
+    <template v-slot:title-bar>
+      <button :disabled="!saveEnabled" @click="emit('save')" class="title-bar-savebtn">
+        <TickIcon :color="saveIconColor" />
+      </button>
+      <button :disabled="!saveEnabled" @click="emit('preview')" class="title-bar-savebtn">
+        <PlayIcon :color="previewIconColor" />
+      </button>
+    </template>
     <TypescriptEditor
       :placeholder="placeholder"
       @initialized="onInitialized"

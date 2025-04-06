@@ -8,6 +8,7 @@ import { mergeValidators, type Validator } from './validators/merge-validators';
 
 import ErrorLog from '@/components/code-editor/error-log.vue';
 import FloatingWindow from '@/components/floating-window.vue';
+import TickIcon from '@/components/icons/tick-icon.vue';
 
 export interface CssEditorWindowProps {
   title?: string;
@@ -30,7 +31,23 @@ const emit = defineEmits<CssEditorWindowEvents>();
 
 const errors = ref<string[]>([]);
 
+const isApplied = ref(false);
+
+const isAppliedDuration = 800;
+let isAppliedFadeTimer = -1;
+
 const saveEnabled = computed(() => errors.value.length === 0);
+
+const onSave = () => {
+  isApplied.value = true;
+
+  clearTimeout(isAppliedFadeTimer);
+  isAppliedFadeTimer = setTimeout(() => (isApplied.value = false), isAppliedDuration);
+
+  emit('save');
+};
+
+const saveIconColor = computed(() => (saveEnabled.value ? '#ffffff' : '#e877e8'));
 
 const validator = (tree: CssStylesheetAST, resolve: ValidationResultResolver) =>
   mergeValidators(errors, ...validators)(tree, resolve);
@@ -43,17 +60,42 @@ const validator = (tree: CssStylesheetAST, resolve: ValidationResultResolver) =>
     :save-enabled="saveEnabled"
     v-model:left="left"
     v-model:top="top"
-    @save="() => emit('save')"
     @close="() => emit('close')"
     style="background-color: white"
   >
+    <template v-slot:title-bar>
+      <button :disabled="!saveEnabled" @click="onSave" class="title-bar-savebtn">
+        <TickIcon :color="saveIconColor" />
+      </button>
+    </template>
     <CssEditor
       :placeholder="placeholder"
       @initialized="(x) => emit('initialized', x)"
       @validation="validator"
     />
     <ErrorLog :logs="errors" />
+    <div v-if="isApplied" class="floating-window-applied-popup"><p>Applied</p></div>
   </FloatingWindow>
 </template>
 
-<style scoped></style>
+<style scoped>
+.floating-window-applied-popup {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 35px;
+  background-color: #43a047;
+  border-radius: 40px;
+  opacity: 1;
+  animation: fadeOut 800ms ease-in forwards;
+}
+
+.floating-window-applied-popup p {
+  font-weight: bold;
+  font-size: 3em;
+}
+</style>
