@@ -164,6 +164,7 @@ onUnmounted(() => {
 }
 
 .data-view {
+  height: 100%;
   overflow: auto;
   background-color: var(--color-background-base);
 }
