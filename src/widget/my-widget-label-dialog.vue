@@ -3,16 +3,22 @@ import { ref, watch } from 'vue';
 
 import MyDialog from '@/components/my-dialog.vue';
 
+export interface MyWidgetLabelProps {
+  placeholder?: string;
+}
+
 export interface MyWidgetLabelDialogEvents {
   (e: 'ok', label: string): void;
   (e: 'cancel'): void;
 }
 
+const { placeholder } = defineProps<MyWidgetLabelProps>();
+
 const show = defineModel<boolean>('show', { required: true });
 
 const emit = defineEmits<MyWidgetLabelDialogEvents>();
 
-const label = ref('');
+const label = ref(placeholder ?? '');
 
 const closeDialog = () => {
   show.value = false;

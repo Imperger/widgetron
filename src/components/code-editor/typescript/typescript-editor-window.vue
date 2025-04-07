@@ -13,8 +13,10 @@ import ErrorLog from '@/components/code-editor/error-log.vue';
 import FloatingWindow from '@/components/floating-window.vue';
 import PlayIcon from '@/components/icons/play-icon.vue';
 import TickIcon from '@/components/icons/tick-icon.vue';
+import MyWidgetLabelDialog from '@/widget/my-widget-label-dialog.vue';
 
 export interface TypescriptEditorWindowProps {
+  label?: string;
   title?: string;
   placeholder?: string;
   extraLibs?: ExtraLib[];
@@ -24,7 +26,7 @@ export interface TypescriptEditorWindowProps {
 export interface TypescriptEditorWindowEvents {
   (e: 'initialized', instance: monaco.editor.IStandaloneCodeEditor): void;
   (e: 'close'): void;
-  (e: 'save'): void;
+  (e: 'save', label: string): void;
   (e: 'preview'): void;
 }
 
@@ -33,6 +35,7 @@ const top = defineModel('top', { required: false, default: 100 });
 
 const {
   placeholder = '',
+  label = '',
   extraLibs = [],
   validators = [],
 } = defineProps<TypescriptEditorWindowProps>();
@@ -46,6 +49,8 @@ const validationErrors = ref<string[]>([]);
 const errorMarkers = ref<string[]>([]);
 const windowHasFocus = ref(false);
 const editorHasFocus = ref(false);
+
+const setWidgetLabelDialogShown = ref(false);
 
 onMounted(() => {
   monaco.languages.typescript.typescriptDefaults.setExtraLibs(extraLibs);
@@ -93,6 +98,20 @@ const onClose = () => {
   emit('close');
 };
 
+const onSave = () => {
+  setWidgetLabelDialogShown.value = true;
+};
+
+const onSetWidgetLabelCancel = () => {
+  setWidgetLabelDialogShown.value = false;
+};
+
+const onSetWidgetLabelOk = async (label: string) => {
+  setWidgetLabelDialogShown.value = false;
+
+  emit('save', label);
+};
+
 const onFocus = () => (windowHasFocus.value = true);
 const onBlur = () => (windowHasFocus.value = false);
 
@@ -117,7 +136,7 @@ onUnmounted(() => disposerList.forEach((x) => x.dispose()));
     style="background-color: white"
   >
     <template v-slot:title-bar>
-      <button :disabled="!saveEnabled" @click="emit('save')" class="title-bar-savebtn">
+      <button :disabled="!saveEnabled" @click="onSave" class="title-bar-savebtn">
         <TickIcon :color="saveIconColor" />
       </button>
       <button :disabled="!saveEnabled" @click="emit('preview')" class="title-bar-savebtn">
@@ -131,6 +150,12 @@ onUnmounted(() => disposerList.forEach((x) => x.dispose()));
     />
     <ErrorLog :logs="errorMarkers" class="error-log" />
   </FloatingWindow>
+  <MyWidgetLabelDialog
+    v-model:show="setWidgetLabelDialogShown"
+    :placeholder="label"
+    @ok="onSetWidgetLabelOk"
+    @cancel="onSetWidgetLabelCancel"
+  />
 </template>
 
 <style scoped>

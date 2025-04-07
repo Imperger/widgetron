@@ -23,7 +23,7 @@ export class ExtensionDB {
 
   async saveWidget(label: string, sourceCode: string, id?: number): Promise<number> {
     try {
-      return await this.db.widgets.add({ id, label, content: sourceCode });
+      return await this.db.widgets.put({ id, label, content: sourceCode });
     } catch (e) {
       console.error(e);
     }

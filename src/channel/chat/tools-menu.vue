@@ -6,6 +6,7 @@ import TypescriptEditorWindow from '@/components/code-editor/typescript/typescri
 import type { ExtraLib } from '@/components/code-editor/typescript/typescript-editor.vue';
 import { requireFunctionValidator } from '@/components/code-editor/typescript/validators/require-function-validator';
 import DeleteIcon from '@/components/icons/delete-icon.vue';
+import EditIcon from '@/components/icons/edit-icon.vue';
 import ToolsIcon from '@/components/icons/tools-icon.vue';
 import TwitchMenuItemDivider from '@/components/twitch/twitch-menu/twitch-menu-item-divider.vue';
 import TwitchMenuItem from '@/components/twitch/twitch-menu/twitch-menu-item.vue';
@@ -16,10 +17,12 @@ import { cssVar } from '@/lib/css-var';
 import type { MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 import { ExternalLibCache } from '@/lib/typescript/external-lib-cache';
 import FloatingWidget from '@/widget/floating-widget.vue';
-import MyWidgetLabelDialog from '@/widget/my-widget-label-dialog.vue';
 
 interface EditorInstance {
+  id?: number;
+  label?: string;
   instance: monaco.editor.IStandaloneCodeEditor | null;
+  placeholder: string;
   extraLibs?: ExtraLib[];
 }
 
@@ -36,8 +39,6 @@ const chatEnhancerWidget = ref<HTMLElement | null>(null);
 
 const widgetEditor = ref<EditorInstance | null>(null);
 const widgetPreview = ref<WidgetPreview | null>(null);
-
-const setWidgetLabelDialogShown = ref(false);
 
 const widgetList = ref<WidgetInfo[]>([]);
 
@@ -64,9 +65,20 @@ onMounted(async () => {
   widgetList.value = await db.allWidgets();
 });
 
-const spawnWidgetEditor = async () => {
+const spawnWidgetEditor = async (id?: number) => {
+  const editedWidget = id !== undefined ? await db.findWidget(id) : null;
+
+  if (id !== undefined && editedWidget === null) {
+    console.error(`Failed to find widget with id='${id}'`);
+
+    return;
+  }
+
   widgetEditor.value = {
+    ...(id !== undefined && { id }),
     instance: null,
+    ...(editedWidget?.label && { label: editedWidget.label }),
+    placeholder: editedWidget?.content ?? placeholder,
     extraLibs: [
       {
         content: await ExternalLibCache.dexie(),
@@ -108,20 +120,22 @@ const onExecute = async () => {
   };
 };
 
-const onSave = () => {
-  setWidgetLabelDialogShown.value = true;
-};
+const onSave = async (label: string) => {
+  const id = await db.saveWidget(
+    label,
+    widgetEditor.value!.instance!.getValue(),
+    widgetEditor.value?.id,
+  );
 
-const onSetWidgetLabelCancel = () => {
-  setWidgetLabelDialogShown.value = false;
-};
+  if (widgetEditor.value?.id === undefined) {
+    widgetList.value.push({ id, label });
+  } else {
+    const editedWidget = widgetList.value.find((x) => x.id === id);
 
-const onSetWidgetLabelOk = async (label: string) => {
-  setWidgetLabelDialogShown.value = false;
-
-  const id = await db.saveWidget(label, widgetEditor.value!.instance!.getValue());
-
-  widgetList.value.push({ id, label });
+    if (editedWidget) {
+      editedWidget.label = label;
+    }
+  }
 };
 
 let nextWidgetId = 0;
@@ -170,24 +184,27 @@ onUnmounted(() => {
           :key="widget.id"
           @click="spawnWidget(widget.id)"
           class="widget-menu-item"
-          ><span class="widget-menu-label">{{ widget.label }}</span
-          ><button @click.stop="deleteWidget(widget.id)" class="widget-menu-delete-btn">
-            <DeleteIcon
-              :color="cssVar('color-border-toggle-checked') ?? undefined"
-            /></button></TwitchMenuItem
+          ><span class="widget-menu-label">{{ widget.label }}</span>
+          <div class="widget-menu-item-action">
+            <button @click.stop="spawnWidgetEditor(widget.id)" class="widget-menu-btn">
+              <EditIcon :color="cssVar('color-border-toggle-checked') ?? undefined" /></button
+            ><button @click.stop="deleteWidget(widget.id)" class="widget-menu-btn">
+              <DeleteIcon :color="cssVar('color-border-toggle-checked') ?? undefined" />
+            </button></div></TwitchMenuItem
       ></TwitchMenu>
     </button>
   </Teleport>
   <TypescriptEditorWindow
     v-if="widgetEditor"
+    :label="widgetEditor.label"
     :extraLibs="widgetEditor.extraLibs"
-    :placeholder="placeholder"
+    :placeholder="widgetEditor.placeholder"
     :validators="[
       requireFunctionValidator('onUISetup', [], 'Promise<UIInput>'),
       requireFunctionValidator('onQuery', ['AppDB', 'UIInput'], 'Promise<WidgetModel>'),
     ]"
     @initialized="(x) => onInitialized(x)"
-    @save="onSave()"
+    @save="onSave"
     @preview="onExecute()"
     @close="() => closeWidgetEditor()"
   />
@@ -196,11 +213,6 @@ onUnmounted(() => {
     :update-period="widgetPreview.updatePeriod"
     :source-code="widgetPreview.sourceCode"
     @close="closeWidgetPreview()"
-  />
-  <MyWidgetLabelDialog
-    v-model:show="setWidgetLabelDialogShown"
-    @ok="onSetWidgetLabelOk"
-    @cancel="onSetWidgetLabelCancel"
   />
 </template>
 
@@ -226,7 +238,12 @@ onUnmounted(() => {
   margin-right: 10px;
 }
 
-.widget-menu-delete-btn {
+.widget-menu-item-action {
+  display: flex;
+  flex-direction: row;
+}
+
+.widget-menu-btn {
   display: flex;
 }
 </style>
