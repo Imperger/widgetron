@@ -160,6 +160,7 @@ onUnmounted(() => {
 
 <style scoped>
 .ui-input {
+  padding: 5px;
   background-color: var(--color-background-base);
 }
 
