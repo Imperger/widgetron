@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onUnmounted, ref } from 'vue';
 
 import CloseIcon from '@/components/icons/close-icon.vue';
 
@@ -28,27 +28,58 @@ const emit = defineEmits<FloatingWindowEvents>();
 
 const componentRef = ref<HTMLElement | null>(null);
 
-let resizeObserver: ResizeObserver | null = null;
+let startTitleDraggingPos: MousePos = { x: 0, y: 0 };
+let startResizehandleDraggingPos: MousePos = { x: 0, y: 0 };
 
-let startDraggingPos: MousePos = { x: 0, y: 0 };
+const minWidth = 800;
+const minHeight = 600;
 
-const onDragStart = (e: MouseEvent) => {
-  startDraggingPos = { x: e.pageX, y: e.pageY };
+const onTitleDragStart = (e: MouseEvent) => {
+  startTitleDraggingPos = { x: e.pageX, y: e.pageY };
 
-  document.addEventListener('mouseup', onDragStop);
-  document.addEventListener('mousemove', onDrag);
+  document.addEventListener('mouseup', onTitleDragStop);
+  document.addEventListener('mousemove', onTitleDrag);
 };
 
-const onDrag = (e: MouseEvent) => {
-  left.value += e.pageX - startDraggingPos.x;
-  top.value += e.pageY - startDraggingPos.y;
+const onTitleDrag = (e: MouseEvent) => {
+  left.value += e.pageX - startTitleDraggingPos.x;
+  top.value += e.pageY - startTitleDraggingPos.y;
 
-  startDraggingPos = { x: e.pageX, y: e.pageY };
+  startTitleDraggingPos = { x: e.pageX, y: e.pageY };
 };
 
-const onDragStop = () => {
-  document.removeEventListener('mousemove', onDrag);
-  document.removeEventListener('mouseup', onDragStop);
+const onTitleDragStop = () => {
+  document.removeEventListener('mousemove', onTitleDrag);
+  document.removeEventListener('mouseup', onTitleDragStop);
+};
+
+const onResizeStart = (e: MouseEvent) => {
+  startResizehandleDraggingPos = { x: e.pageX, y: e.pageY };
+
+  document.addEventListener('mouseup', onResizeStop);
+  document.addEventListener('mousemove', onResize);
+};
+
+const onResize = (e: MouseEvent) => {
+  const newWidth = width.value + e.pageX - startResizehandleDraggingPos.x;
+  const newHeight = height.value + e.pageY - startResizehandleDraggingPos.y;
+
+  if (newWidth > minWidth) {
+    width.value = newWidth;
+
+    startResizehandleDraggingPos.x = e.pageX;
+  }
+
+  if (newHeight >= minHeight) {
+    height.value = newHeight;
+
+    startResizehandleDraggingPos.y = e.pageY;
+  }
+};
+
+const onResizeStop = () => {
+  document.removeEventListener('mousemove', onResize);
+  document.removeEventListener('mouseup', onResizeStop);
 };
 
 const style = computed(() => ({
@@ -58,34 +89,18 @@ const style = computed(() => ({
   top: `${top.value}px`,
 }));
 
-const onResize = (_entries: ResizeObserverEntry[], _observer: ResizeObserver) => {
-  const rect = componentRef.value!.getBoundingClientRect();
-
-  width.value = rect.width;
-  height.value = rect.height;
-};
-
-onMounted(() => {
-  resizeObserver = new ResizeObserver(onResize);
-  resizeObserver.observe(componentRef.value!);
-});
-
 onUnmounted(() => {
-  resizeObserver?.disconnect();
+  document.removeEventListener('mousemove', onTitleDrag);
+  document.removeEventListener('mouseup', onTitleDragStop);
 
-  document.removeEventListener('mousemove', onDrag);
-  document.removeEventListener('mouseup', onDragStop);
+  document.removeEventListener('mousemove', onResize);
+  document.removeEventListener('mouseup', onResizeStop);
 });
 </script>
 
 <template>
-  <div
-    ref="componentRef"
-    class="floating-window"
-    :class="{ 'floating-window-resizable': resizable }"
-    :style="style"
-  >
-    <div @mousedown="onDragStart" class="title-bar">
+  <div ref="componentRef" class="floating-window" :style="style">
+    <div @mousedown="onTitleDragStart" class="title-bar">
       <slot name="title-bar"></slot>
       <div class="title-bar-caption">{{ title }}</div>
       <button @click="() => emit('close')" class="title-bar-closebtn"><CloseIcon /></button>
@@ -93,6 +108,7 @@ onUnmounted(() => {
     <div class="floating-window-content">
       <slot></slot>
     </div>
+    <div v-if="resizable" @mousedown="onResizeStart" class="resize-handle"></div>
   </div>
 </template>
 
@@ -106,11 +122,6 @@ onUnmounted(() => {
   flex-direction: column;
   position: absolute;
   z-index: 1000;
-}
-
-.floating-window-resizable {
-  overflow: auto;
-  resize: both;
 }
 
 .title-bar {
@@ -145,6 +156,18 @@ onUnmounted(() => {
   flex-direction: column;
   max-height: calc(100% - var(--caption-bar-height));
   flex: 1 0 auto;
+}
+
+.resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-left: 15px solid transparent;
+  border-top: 15px solid #7c7c7c63;
+  cursor: nwse-resize;
+  transform: rotate(90deg);
 }
 
 @keyframes fadeOut {
