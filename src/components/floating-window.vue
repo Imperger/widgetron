@@ -156,6 +156,7 @@ onUnmounted(() => {
   flex-direction: column;
   max-height: calc(100% - var(--caption-bar-height));
   flex: 1 0 auto;
+  background-color: var(--color-background-base);
 }
 
 .resize-handle {

@@ -9,8 +9,10 @@ import {
   chatInterceptorToken,
   dbToken,
   gqlInterceptorToken,
+  localStorageInterceptorToken,
   widgetsToken,
 } from './injection-tokens';
+import { LocalStorageInterceptor } from './lib/interceptors/local-storage-interceptor';
 import { NavigationInterceptor } from './lib/interceptors/navigation-interceptor';
 import { ChatInterceptor } from './lib/interceptors/network-interceptor/chat-interceptor';
 import { FetchInterceptor } from './lib/interceptors/network-interceptor/fetch-interceptor';
@@ -44,6 +46,9 @@ function createMountingPoint() {
   const chatInterceptor = new ChatInterceptor();
   websocketIntrceptor.subscribe(chatInterceptor);
 
+  const localStorageInterceptor = new LocalStorageInterceptor();
+  localStorageInterceptor.install();
+
   await waitUntil(document, 'DOMContentLoaded');
 
   const app = createApp(App);
@@ -53,6 +58,7 @@ function createMountingPoint() {
   app.provide(bodyMountPointMaintainerToken, new MountPointMaintainer(document.body));
   app.provide(dbToken, new ExtensionDB(db));
   app.provide(widgetsToken, ref<WidgetInstance[]>([]));
+  app.provide(localStorageInterceptorToken, localStorageInterceptor);
 
   app.use(createPinia());
   app.use(router);

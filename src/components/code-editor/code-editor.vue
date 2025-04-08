@@ -6,7 +6,10 @@ import CssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker&inlin
 import HtmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker&inline';
 import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker&inline';
 import TsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker&inline';
-import { onMounted, onUnmounted, ref } from 'vue';
+import { inject, onMounted, onUnmounted, ref } from 'vue';
+
+import { localStorageInterceptorToken } from '@/injection-tokens';
+import type { LocalStorageInterceptorListenerUnsubscriber } from '@/lib/interceptors/local-storage-interceptor';
 
 self.MonacoEnvironment = {
   getWorker: function (_moduleId: unknown, label: string) {
@@ -39,12 +42,18 @@ export interface CodeEditorEvents {
   (e: 'initialized', instance: monaco.editor.IStandaloneCodeEditor): void;
 }
 
+const localStorageInterceptor = inject(localStorageInterceptorToken);
+
 const { placeholder = '', language } = defineProps<CodeEditorProps>();
 const emit = defineEmits<CodeEditorEvents>();
 
 const mountEl = ref<HTMLElement | null>(null);
 let editor: monaco.editor.IStandaloneCodeEditor | null = null;
 let resizeObserver: ResizeObserver | null = null;
+
+let localStorageWriteUnsub: LocalStorageInterceptorListenerUnsubscriber | null = null;
+
+const twitchThemeKey = 'twilight.theme';
 
 const onResize = (_entries: ResizeObserverEntry[], _observer: ResizeObserver) => {
   editor?.layout({ width: 0, height: 0 });
@@ -54,6 +63,14 @@ const onResize = (_entries: ResizeObserverEntry[], _observer: ResizeObserver) =>
 
     editor?.layout({ width: rect.width, height: rect.height });
   });
+};
+
+const onLocalStorageWrite = (key: string, value: string) => {
+  if (key === twitchThemeKey) {
+    monaco.editor.setTheme(value === '0' ? 'vs' : 'vs-dark');
+  }
+
+  return false;
 };
 
 onMounted(() => {
@@ -66,11 +83,17 @@ onMounted(() => {
     resizeObserver = new ResizeObserver(onResize);
     resizeObserver.observe(mountEl.value);
 
+    localStorageWriteUnsub = localStorageInterceptor!.subscribe('set', onLocalStorageWrite);
+
+    monaco.editor.setTheme(localStorage.getItem(twitchThemeKey) === '0' ? 'vs' : 'vs-dark');
+
     emit('initialized', editor);
   }
 });
 
 onUnmounted(() => {
+  localStorageWriteUnsub?.();
+
   resizeObserver?.disconnect();
 
   editor?.dispose();
