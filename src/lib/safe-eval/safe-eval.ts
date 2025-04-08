@@ -12,7 +12,7 @@ export async function safeEval<T>(
   worker.timeout = timeout;
 
   try {
-    if (!worker.upload(sourceCode, async)) {
+    if (!(await worker.upload(sourceCode, async))) {
       throw new Error('Failed to upload source code to the eval-worker');
     }
 
