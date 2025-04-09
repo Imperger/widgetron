@@ -33,5 +33,6 @@ const show = defineModel<boolean>('show', { required: true });
   padding: 10px;
   min-width: 400px;
   background-color: var(--color-background-base);
+  box-shadow: var(--shadow-elevation-2);
 }
 </style>
