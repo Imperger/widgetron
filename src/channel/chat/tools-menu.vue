@@ -49,7 +49,7 @@ interface UIInput extends OnlyUIInputProperties {
 
 }
 
-async function onUISetup(): Promise<UIInput> {
+async function onUISetup(env: Environment): Promise<UIInput> {
     return { };
 }
 
@@ -200,7 +200,7 @@ onUnmounted(() => {
     :extraLibs="widgetEditor.extraLibs"
     :placeholder="widgetEditor.placeholder"
     :validators="[
-      requireFunctionValidator('onUISetup', [], 'Promise<UIInput>'),
+      requireFunctionValidator('onUISetup', ['Environment'], 'Promise<UIInput>'),
       requireFunctionValidator('onQuery', ['AppDB', 'UIInput'], 'Promise<WidgetModel>'),
     ]"
     @initialized="(x) => onInitialized(x)"

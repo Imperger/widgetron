@@ -108,6 +108,13 @@ export class ExternalLibCache {
         [{ type: 'interface', name: 'OnlyUIInputProperties' }],
         ['remove-export'],
       );
+
+      ExternalLibCache.widgetInputCode += await ExternalLibCache.load(
+        'environment.ts',
+        import.meta.glob('/src/widget/input/environment.ts', { as: 'raw' }),
+        [],
+        ['remove-export'],
+      );
     }
 
     return ExternalLibCache.widgetInputCode;

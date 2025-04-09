@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import dayjs from 'dayjs';
+import duration from 'dayjs/plugin/duration';
 import * as ts from 'typescript';
 import { computed, onUnmounted, ref, toRaw, watch } from 'vue';
+import { useRoute } from 'vue-router';
 
+import type { Environment, EnvironmentChannel } from './input/environment';
 import type { OnlyUIInputProperties } from './input/only-ui-input-properties';
 import type { UIInputComponent } from './input/ui-input-component';
 import type { UITextInput } from './input/ui-text-input';
@@ -15,6 +19,8 @@ import { safeEval } from '@/lib/safe-eval/safe-eval';
 import { SafeTaskRunner } from '@/lib/safe-task-runner';
 import { TypescriptExtractor } from '@/lib/typescript/typescript-extractor';
 import QueryWorker from '@/widget/query-worker?worker&inline';
+
+dayjs.extend(duration);
 
 export interface WidgetProps {
   updatePeriod: number;
@@ -35,6 +41,8 @@ const { updatePeriod, sourceCode } = defineProps<WidgetProps>();
 
 const emit = defineEmits<FloatingWidgetEvents>();
 
+const route = useRoute();
+
 const uiInput = ref<OnlyUIInputPropertiesWithType | null>(null);
 
 const model = ref<WidgetModel | null>(null);
@@ -43,6 +51,57 @@ const worker = new SafeTaskRunner(QueryWorker);
 
 let unmounted = false;
 let isRunning = false;
+
+const channelEnvironment = (): EnvironmentChannel | null => {
+  if (route.params.channel === undefined) {
+    return null;
+  }
+
+  const name = reinterpret_cast<string>(route.params.channel);
+
+  const viewers = Number.parseInt(
+    reinterpret_cast<HTMLElement | null>(
+      document.querySelector('[data-a-target="animated-channel-viewers-count"] span'),
+    )?.innerText ?? '-1',
+  );
+
+  if (viewers === -1) {
+    return { online: false, name };
+  }
+
+  const game =
+    reinterpret_cast<HTMLElement | null>(
+      document.querySelector('[data-a-target="stream-game-link"] span'),
+    )?.innerText ?? '';
+
+  const durationStr =
+    reinterpret_cast<HTMLElement | null>(document.querySelector('.live-time span'))?.innerText ??
+    '0:0:0';
+
+  const [hours, minutes, seconds] = durationStr.split(':').map(Number);
+
+  const duration = dayjs
+    .duration({
+      hours,
+      minutes,
+      seconds,
+    })
+    .asMilliseconds();
+
+  return {
+    online: true,
+    name,
+    game,
+    startTime: new Date(Date.now() - duration),
+    viewers,
+  };
+};
+
+const collectEnvironment = (): Environment => {
+  const channel = channelEnvironment();
+
+  return { ...(channel && { channel }) };
+};
 
 const setupUIInput = async (sourceFile: ts.SourceFile) => {
   const properties = TypescriptExtractor.interfaceProperties(sourceFile, 'UIInput');
@@ -60,7 +119,7 @@ const setupUIInput = async (sourceFile: ts.SourceFile) => {
 
   const uiInputTemplate = await safeEval<OnlyUIInputProperties>(
     onUISetupBody.async,
-    [],
+    [{ parameter: 'env', value: collectEnvironment() }],
     onQueryBodyJs,
   );
 
