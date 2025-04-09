@@ -3,6 +3,7 @@ export interface UploadCodeMessage {
   requestId: number;
   sourceCode: string;
   async: boolean;
+  parameters: string[];
 }
 
 export interface ExecuteMessage {
@@ -20,14 +21,14 @@ let evalFunction: EvalFunction | null = null;
 self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
   switch (e.data.type) {
     case 'upload':
-      uploadSourceCode(e.data.sourceCode, e.data.async);
+      uploadSourceCode(e.data.async, e.data.parameters, e.data.sourceCode);
 
       self.postMessage({ requestId: e.data.requestId, return: true });
       break;
     case 'execute':
       const AsyncFunction = async function () {}.constructor;
       if (evalFunction instanceof AsyncFunction) {
-        const result = await evalFunction();
+        const result = await evalFunction(...e.data.args);
 
         self.postMessage({ requestId: e.data.requestId, return: result });
       } else if (evalFunction instanceof Function) {
@@ -38,8 +39,8 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
   }
 };
 
-function uploadSourceCode(sourceCode: string, async: boolean): void {
+function uploadSourceCode(async: boolean, parameters: string[], sourceCode: string): void {
   const createFn = async ? async function () {}.constructor : Function;
 
-  evalFunction = createFn(sourceCode) as EvalFunction;
+  evalFunction = createFn(...parameters, sourceCode) as EvalFunction;
 }

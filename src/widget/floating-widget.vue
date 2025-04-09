@@ -58,7 +58,11 @@ const setupUIInput = async (sourceFile: ts.SourceFile) => {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
 
-  const uiInputTemplate = await safeEval<OnlyUIInputProperties>(onQueryBodyJs, onUISetupBody.async);
+  const uiInputTemplate = await safeEval<OnlyUIInputProperties>(
+    onUISetupBody.async,
+    [],
+    onQueryBodyJs,
+  );
 
   return [...Object.entries(uiInputTemplate)].reduce(
     (acc, [prop, config]) => ({ ...acc, [prop]: { ...config, type: properties.get(prop) } }),
@@ -78,7 +82,7 @@ const uploadCode = async (sourceFile: ts.SourceFile) => {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
 
-  const uploaded = await worker.upload(onQueryBodyJs, onQueryBody.async);
+  const uploaded = await worker.upload(onQueryBody.async, ['db', 'input'], onQueryBodyJs);
 
   if (!uploaded) {
     emit('close');

@@ -8,6 +8,7 @@ export interface UploadCodeMessage {
   requestId: number;
   sourceCode: string;
   async: boolean;
+  parameters: string[];
 }
 
 export interface ExecuteMessage {
@@ -29,7 +30,7 @@ let queryFunction: QueryFunction | null = null;
 self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
   switch (e.data.type) {
     case 'upload':
-      uploadSourceCode(e.data.sourceCode, e.data.async);
+      uploadSourceCode(e.data.async, e.data.parameters, e.data.sourceCode);
 
       self.postMessage({ requestId: e.data.requestId, return: true });
       break;
@@ -47,8 +48,8 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
   }
 };
 
-function uploadSourceCode(sourceCode: string, async: boolean): void {
+function uploadSourceCode(async: boolean, parameters: string[], sourceCode: string): void {
   const createFn = async ? async function () {}.constructor : Function;
 
-  queryFunction = createFn('db', 'input', sourceCode) as QueryFunction;
+  queryFunction = createFn(...parameters, sourceCode) as QueryFunction;
 }
