@@ -136,10 +136,10 @@ onUnmounted(() => disposerList.forEach((x) => x.dispose()));
     style="background-color: white"
   >
     <template v-slot:title-bar>
-      <button :disabled="!saveEnabled" @click="onSave" class="title-bar-savebtn">
+      <button :disabled="!saveEnabled" @click="onSave" class="title-bar-btn">
         <TickIcon :color="saveIconColor" />
       </button>
-      <button :disabled="!saveEnabled" @click="emit('preview')" class="title-bar-savebtn">
+      <button :disabled="!saveEnabled" @click="emit('preview')" class="title-bar-btn">
         <PlayIcon :color="previewIconColor" />
       </button>
     </template>
@@ -159,6 +159,12 @@ onUnmounted(() => disposerList.forEach((x) => x.dispose()));
 </template>
 
 <style scoped>
+.title-bar-btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .error-log {
   height: 84px;
   overflow: auto;

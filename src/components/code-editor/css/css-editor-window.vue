@@ -64,7 +64,7 @@ const validator = (tree: CssStylesheetAST, resolve: ValidationResultResolver) =>
     style="background-color: white"
   >
     <template v-slot:title-bar>
-      <button :disabled="!saveEnabled" @click="onSave" class="title-bar-savebtn">
+      <button :disabled="!saveEnabled" @click="onSave" class="title-bar-btn">
         <TickIcon :color="saveIconColor" />
       </button>
     </template>
@@ -79,6 +79,11 @@ const validator = (tree: CssStylesheetAST, resolve: ValidationResultResolver) =>
 </template>
 
 <style scoped>
+.title-bar-btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 .floating-window-applied-popup {
   display: flex;
   justify-content: center;

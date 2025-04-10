@@ -143,14 +143,6 @@ onUnmounted(() => {
   text-overflow: ellipsis;
 }
 
-.title-bar-savebtn {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  margin-left: 5px;
-}
-
 .title-bar-closebtn {
   display: flex;
   justify-content: center;
