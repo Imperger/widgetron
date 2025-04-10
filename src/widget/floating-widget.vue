@@ -5,7 +5,7 @@ import * as ts from 'typescript';
 import { computed, onUnmounted, ref, toRaw, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
-import type { Environment, EnvironmentChannel } from './input/environment';
+import type { Environment, EnvironmentChannel } from './api/environment';
 import type { OnlyUIInputProperties } from './input/only-ui-input-properties';
 import type { UIInputComponent } from './input/ui-input-component';
 import type { UITextInput } from './input/ui-text-input';
@@ -18,7 +18,7 @@ import { reinterpret_cast } from '@/lib/reinterpret-cast';
 import { safeEval } from '@/lib/safe-eval/safe-eval';
 import { SafeTaskRunner } from '@/lib/safe-task-runner';
 import { TypescriptExtractor } from '@/lib/typescript/typescript-extractor';
-import QueryWorker from '@/widget/query-worker?worker&inline';
+import QueryWorker from '@/widget/widget-worker?worker&inline';
 
 dayjs.extend(duration);
 
@@ -142,7 +142,7 @@ const uploadCode = async (sourceFile: ts.SourceFile) => {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
 
-  const uploaded = await worker.upload(onUpdateBody.async, ['db', 'input'], onUpdateBodyJs);
+  const uploaded = await worker.upload(onUpdateBody.async, ['input', 'api'], onUpdateBodyJs);
 
   if (!uploaded) {
     emit('close');
@@ -174,7 +174,9 @@ watch(
 
 const onExecute = async () => {
   try {
-    model.value = reinterpret_cast<WidgetModel>(await worker.execute(toRaw(uiInput.value)));
+    model.value = reinterpret_cast<WidgetModel>(
+      await worker.execute(toRaw(uiInput.value), { env: collectEnvironment() }),
+    );
 
     setTimeout(() => onExecute(), updatePeriod);
   } catch (e) {

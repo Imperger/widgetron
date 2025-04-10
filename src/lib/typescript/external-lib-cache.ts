@@ -15,9 +15,7 @@ type TransformationRule = 'remove-export';
 
 export class ExternalLibCache {
   private static dexieCode = '';
-  private static appDBCode = '';
-  private static widgetModelCode = '';
-  private static widgetInputCode = '';
+  private static widgetTypesCode = '';
 
   static async dexie(): Promise<string> {
     if (ExternalLibCache.dexieCode.length === 0) {
@@ -32,92 +30,87 @@ export class ExternalLibCache {
     return ExternalLibCache.dexieCode;
   }
 
-  static async appDB(): Promise<string> {
-    if (ExternalLibCache.appDBCode.length === 0) {
-      ExternalLibCache.appDBCode = await ExternalLibCache.load(
+  static async widgetTypes(): Promise<string> {
+    if (ExternalLibCache.widgetTypesCode.length === 0) {
+      ExternalLibCache.widgetTypesCode = await ExternalLibCache.load(
         'message.ts',
         import.meta.glob('/src/db/message.ts', { as: 'raw' }),
         [{ type: 'class', name: 'Message' }],
         ['remove-export'],
       );
 
-      ExternalLibCache.appDBCode += await ExternalLibCache.load(
+      ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
         'widget-source-code.ts',
         import.meta.glob('/src/db/widget-source-code.ts', { as: 'raw' }),
         [{ type: 'class', name: 'WidgetSourceCode' }],
         ['remove-export'],
       );
 
-      ExternalLibCache.appDBCode += await ExternalLibCache.load(
+      ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
         'app-db.ts',
         import.meta.glob('/src/db/app-db.ts', { as: 'raw' }),
         [{ type: 'class', name: 'AppDB' }],
         ['remove-export'],
       );
-    }
 
-    return ExternalLibCache.appDBCode;
-  }
-
-  static async widgetModel(): Promise<string> {
-    if (ExternalLibCache.widgetModelCode.length === 0) {
-      ExternalLibCache.widgetModelCode = await ExternalLibCache.load(
+      ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
         'widget-model-table.ts',
         import.meta.glob('/src/widget/model/widget-model-table.ts', { as: 'raw' }),
         [],
         ['remove-export'],
       );
 
-      ExternalLibCache.widgetModelCode += await ExternalLibCache.load(
+      ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
         'widget-model.ts',
         import.meta.glob('/src/widget/model/widget-model.ts', { as: 'raw' }),
         [{ type: 'type', name: 'WidgetModel' }],
         ['remove-export'],
       );
-    }
 
-    return ExternalLibCache.widgetModelCode;
-  }
-
-  static async widgetInput(): Promise<string> {
-    if (ExternalLibCache.widgetInputCode.length === 0) {
-      ExternalLibCache.widgetInputCode = await ExternalLibCache.load(
+      ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
         'ui-text-input.ts',
         import.meta.glob('/src/widget/input/ui-text-input.ts', { as: 'raw' }),
         [],
         ['remove-export'],
       );
 
-      ExternalLibCache.widgetInputCode += await ExternalLibCache.load(
+      ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
         'ui-slider-input.ts',
         import.meta.glob('/src/widget/input/ui-slider-input.ts', { as: 'raw' }),
         [],
         ['remove-export'],
       );
 
-      ExternalLibCache.widgetInputCode += await ExternalLibCache.load(
+      ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
         'ui-input-component.ts',
         import.meta.glob('/src/widget/input/ui-input-component.ts', { as: 'raw' }),
         [{ type: 'type', name: 'UIInputComponent' }],
         ['remove-export'],
       );
 
-      ExternalLibCache.widgetInputCode += await ExternalLibCache.load(
+      ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
         'only-ui-input-properties.ts',
         import.meta.glob('/src/widget/input/only-ui-input-properties.ts', { as: 'raw' }),
         [{ type: 'interface', name: 'OnlyUIInputProperties' }],
         ['remove-export'],
       );
 
-      ExternalLibCache.widgetInputCode += await ExternalLibCache.load(
+      ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
         'environment.ts',
-        import.meta.glob('/src/widget/input/environment.ts', { as: 'raw' }),
+        import.meta.glob('/src/widget/api/environment.ts', { as: 'raw' }),
         [],
+        ['remove-export'],
+      );
+
+      ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
+        'environment.ts',
+        import.meta.glob('/src/widget/api/api.ts', { as: 'raw' }),
+        [{ type: 'interface', name: 'API' }],
         ['remove-export'],
       );
     }
 
-    return ExternalLibCache.widgetInputCode;
+    return ExternalLibCache.widgetTypesCode;
   }
 
   private static async load(

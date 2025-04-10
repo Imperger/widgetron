@@ -1,3 +1,4 @@
+import type { API } from './api/api';
 import type { OnlyUIInputProperties } from './input/only-ui-input-properties';
 import type { WidgetModel } from './model/widget-model';
 
@@ -14,18 +15,18 @@ export interface UploadCodeMessage {
 export interface ExecuteMessage {
   type: 'execute';
   requestId: number;
-  args: [OnlyUIInputProperties];
+  args: [OnlyUIInputProperties, API];
 }
 
 export type IncomingMessage = UploadCodeMessage | ExecuteMessage;
 
 export type QueryFunction = (
-  db: AppDb,
   input: OnlyUIInputProperties,
+  api: API,
 ) => WidgetModel | Promise<WidgetModel>;
 
 const db = new AppDb();
-let queryFunction: QueryFunction | null = null;
+let updateFunction: QueryFunction | null = null;
 
 self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
   switch (e.data.type) {
@@ -36,12 +37,12 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
       break;
     case 'execute':
       const AsyncFunction = async function () {}.constructor;
-      if (queryFunction instanceof AsyncFunction) {
-        const result = await queryFunction(db, e.data.args[0]);
+      if (updateFunction instanceof AsyncFunction) {
+        const result = await updateFunction(e.data.args[0], { ...e.data.args[1], db });
 
         self.postMessage({ requestId: e.data.requestId, return: result });
-      } else if (queryFunction instanceof Function) {
-        const result = queryFunction(db, e.data.args[0]);
+      } else if (updateFunction instanceof Function) {
+        const result = updateFunction(e.data.args[0], { ...e.data.args[1], db });
 
         self.postMessage({ requestId: e.data.requestId, return: result });
       }
@@ -51,5 +52,5 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
 function uploadSourceCode(async: boolean, parameters: string[], sourceCode: string): void {
   const createFn = async ? async function () {}.constructor : Function;
 
-  queryFunction = createFn(...parameters, sourceCode) as QueryFunction;
+  updateFunction = createFn(...parameters, sourceCode) as QueryFunction;
 }

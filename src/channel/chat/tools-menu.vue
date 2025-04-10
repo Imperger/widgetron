@@ -49,11 +49,11 @@ interface UIInput extends OnlyUIInputProperties {
 
 }
 
-async function onUISetup(env: Environment): Promise<UIInput> {
+async function onUISetup(api: Environment): Promise<UIInput> {
     return { };
 }
 
-async function onUpdate(db: AppDB, input: UIInput): Promise<WidgetModel> {
+async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
 }`;
 
 onMounted(async () => {
@@ -85,16 +85,8 @@ const spawnWidgetEditor = async (id?: number) => {
         filePath: `dexie.d.ts`,
       },
       {
-        content: await ExternalLibCache.appDB(),
-        filePath: `appDB.d.ts`,
-      },
-      {
-        content: await ExternalLibCache.widgetModel(),
-        filePath: `widget-model.d.ts`,
-      },
-      {
-        content: await ExternalLibCache.widgetInput(),
-        filePath: `widget-input.d.ts`,
+        content: await ExternalLibCache.widgetTypes(),
+        filePath: `widget-types.d.ts`,
       },
     ],
   };
@@ -201,7 +193,7 @@ onUnmounted(() => {
     :placeholder="widgetEditor.placeholder"
     :validators="[
       requireFunctionValidator('onUISetup', ['Environment'], 'Promise<UIInput>'),
-      requireFunctionValidator('onUpdate', ['AppDB', 'UIInput'], 'Promise<WidgetModel>'),
+      requireFunctionValidator('onUpdate', ['UIInput', 'API'], 'Promise<WidgetModel>'),
     ]"
     @initialized="(x) => onInitialized(x)"
     @save="onSave"
