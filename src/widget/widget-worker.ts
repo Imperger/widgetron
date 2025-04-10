@@ -38,13 +38,19 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
     case 'execute':
       const AsyncFunction = async function () {}.constructor;
       if (updateFunction instanceof AsyncFunction) {
-        const result = await updateFunction(e.data.args[0], { ...e.data.args[1], db });
+        const model = await updateFunction(e.data.args[0], { ...e.data.args[1], db });
 
-        self.postMessage({ requestId: e.data.requestId, return: result });
+        self.postMessage({
+          requestId: e.data.requestId,
+          return: { model, input: e.data.args[0] },
+        });
       } else if (updateFunction instanceof Function) {
-        const result = updateFunction(e.data.args[0], { ...e.data.args[1], db });
+        const model = updateFunction(e.data.args[0], { ...e.data.args[1], db });
 
-        self.postMessage({ requestId: e.data.requestId, return: result });
+        self.postMessage({
+          requestId: e.data.requestId,
+          return: { model, input: e.data.args[0] },
+        });
       }
   }
 };

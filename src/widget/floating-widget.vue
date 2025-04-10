@@ -14,6 +14,7 @@ import type { WidgetModel } from './model/widget-model';
 import TableView from './table-view.vue';
 
 import FloatingWindow from '@/components/floating-window.vue';
+import { JsonObjectComparator, type JSONObject } from '@/lib/json-object-equal';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
 import { safeEval } from '@/lib/safe-eval/safe-eval';
 import { SafeTaskRunner } from '@/lib/safe-task-runner';
@@ -21,6 +22,11 @@ import { TypescriptExtractor } from '@/lib/typescript/typescript-extractor';
 import QueryWorker from '@/widget/widget-worker?worker&inline';
 
 dayjs.extend(duration);
+
+interface UpdateResult {
+  model: WidgetModel;
+  input: JSONObject;
+}
 
 export interface WidgetProps {
   label?: string;
@@ -174,9 +180,22 @@ watch(
 
 const onExecute = async () => {
   try {
-    model.value = reinterpret_cast<WidgetModel>(
+    const result = reinterpret_cast<UpdateResult>(
       await worker.execute(toRaw(uiInput.value), { env: collectEnvironment() }),
     );
+
+    if (
+      JsonObjectComparator.equalShape(
+        reinterpret_cast<JSONObject>(toRaw(uiInput.value)),
+        result.input,
+      )
+    ) {
+      uiInput.value = reinterpret_cast<OnlyUIInputPropertiesWithType>(result.input);
+    } else {
+      throw new Error('UIInput object is malformed');
+    }
+
+    model.value = result.model;
 
     setTimeout(() => onExecute(), updatePeriod);
   } catch (e) {

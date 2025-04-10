@@ -1,4 +1,4 @@
-import { jsonObjectEqual, type JSONObject } from '../../json-object-equal';
+import { JsonObjectComparator, type JSONObject } from '../../json-object-equal';
 
 import type { FetchInterceptorListener, FetchInterceptorRequest } from './fetch-interceptor';
 
@@ -47,7 +47,7 @@ export class GQLInterceptor implements FetchInterceptorListener {
             subscriber.query.variables === undefined) ||
           (subscriber.query.operationName === requestItem.operationName &&
             (subscriber.query.variables === undefined ||
-              jsonObjectEqual(subscriber.query.variables, requestItem.variables)))
+              JsonObjectComparator.equal(subscriber.query.variables, requestItem.variables)))
         ) {
           subscriber.listener(responseItems[n]);
         }
