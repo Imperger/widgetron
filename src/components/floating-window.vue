@@ -11,13 +11,20 @@ interface MousePos {
 export interface FloatingWindowProps {
   title?: string;
   resizable?: boolean;
+  minWidth?: number;
+  minHeight?: number;
 }
 
 export interface FloatingWindowEvents {
   (e: 'close'): void;
 }
 
-const { title = '', resizable = false } = defineProps<FloatingWindowProps>();
+const {
+  title = '',
+  resizable = false,
+  minWidth = 800,
+  minHeight = 600,
+} = defineProps<FloatingWindowProps>();
 
 const width = defineModel<number>('width', { required: false, default: 800 });
 const height = defineModel<number>('height', { required: false, default: 600 });
@@ -30,9 +37,6 @@ const componentRef = ref<HTMLElement | null>(null);
 
 let startTitleDraggingPos: MousePos = { x: 0, y: 0 };
 let startResizehandleDraggingPos: MousePos = { x: 0, y: 0 };
-
-const minWidth = 800;
-const minHeight = 600;
 
 const onTitleDragStart = (e: MouseEvent) => {
   startTitleDraggingPos = { x: e.pageX, y: e.pageY };
@@ -132,8 +136,11 @@ onUnmounted(() => {
 }
 
 .title-bar-caption {
-  flex: 1 0 auto;
+  flex: 1 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
   text-align: center;
+  text-overflow: ellipsis;
 }
 
 .title-bar-savebtn {

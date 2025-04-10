@@ -205,7 +205,14 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <FloatingWindow :title="label" @close="emit('close')" style="background-color: white">
+  <FloatingWindow
+    :title="label"
+    :resizable="true"
+    :min-width="100"
+    :min-height="100"
+    @close="emit('close')"
+    class="floating-widget"
+  >
     <div class="ui-input">
       <template v-for="component in uiInputComponents" :key="component.id">
         <UiTextInput
@@ -223,6 +230,10 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.floating-widget {
+  overflow: hidden;
+}
+
 .ui-input {
   padding: 5px;
   background-color: var(--color-background-base);
