@@ -20,6 +20,7 @@ const closeWidget = (key: number) => {
   <FloatingWidget
     v-for="widget in widgets"
     :key="widget.key"
+    :label="widget.label"
     :update-period="widget.updatePeriod"
     :source-code="widget.sourceCode"
     @close="closeWidget(widget.key)"

@@ -23,6 +23,7 @@ import QueryWorker from '@/widget/query-worker?worker&inline';
 dayjs.extend(duration);
 
 export interface WidgetProps {
+  label?: string;
   updatePeriod: number;
   sourceCode: string;
 }
@@ -37,7 +38,7 @@ export type OnlyUIInputPropertiesWithType = {
   [K in keyof OnlyUIInputProperties]: UIInputComponentWithType;
 };
 
-const { updatePeriod, sourceCode } = defineProps<WidgetProps>();
+const { label = '', updatePeriod, sourceCode } = defineProps<WidgetProps>();
 
 const emit = defineEmits<FloatingWidgetEvents>();
 
@@ -204,7 +205,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <FloatingWindow @close="emit('close')" style="background-color: white">
+  <FloatingWindow :title="label" @close="emit('close')" style="background-color: white">
     <div class="ui-input">
       <template v-for="component in uiInputComponents" :key="component.id">
         <UiTextInput
