@@ -53,7 +53,7 @@ async function onUISetup(env: Environment): Promise<UIInput> {
     return { };
 }
 
-async function onQuery(db: AppDB, input: UIInput): Promise<WidgetModel> {
+async function onUpdate(db: AppDB, input: UIInput): Promise<WidgetModel> {
 }`;
 
 onMounted(async () => {
@@ -201,7 +201,7 @@ onUnmounted(() => {
     :placeholder="widgetEditor.placeholder"
     :validators="[
       requireFunctionValidator('onUISetup', ['Environment'], 'Promise<UIInput>'),
-      requireFunctionValidator('onQuery', ['AppDB', 'UIInput'], 'Promise<WidgetModel>'),
+      requireFunctionValidator('onUpdate', ['AppDB', 'UIInput'], 'Promise<WidgetModel>'),
     ]"
     @initialized="(x) => onInitialized(x)"
     @save="onSave"

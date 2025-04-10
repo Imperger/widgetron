@@ -114,14 +114,14 @@ const setupUIInput = async (sourceFile: ts.SourceFile) => {
     return null;
   }
 
-  const onQueryBodyJs = ts.transpileModule(onUISetupBody.body, {
+  const onUpdateBodyJs = ts.transpileModule(onUISetupBody.body, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
 
   const uiInputTemplate = await safeEval<OnlyUIInputProperties>(
     onUISetupBody.async,
     [{ parameter: 'env', value: collectEnvironment() }],
-    onQueryBodyJs,
+    onUpdateBodyJs,
   );
 
   return [...Object.entries(uiInputTemplate)].reduce(
@@ -131,18 +131,18 @@ const setupUIInput = async (sourceFile: ts.SourceFile) => {
 };
 
 const uploadCode = async (sourceFile: ts.SourceFile) => {
-  const onQueryBody = TypescriptExtractor.functionBody(sourceFile, 'onQuery');
+  const onUpdateBody = TypescriptExtractor.functionBody(sourceFile, 'onUpdate');
 
-  if (onQueryBody === null) {
+  if (onUpdateBody === null) {
     emit('close');
     return;
   }
 
-  const onQueryBodyJs = ts.transpileModule(onQueryBody.body, {
+  const onUpdateBodyJs = ts.transpileModule(onUpdateBody.body, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
 
-  const uploaded = await worker.upload(onQueryBody.async, ['db', 'input'], onQueryBodyJs);
+  const uploaded = await worker.upload(onUpdateBody.async, ['db', 'input'], onUpdateBodyJs);
 
   if (!uploaded) {
     emit('close');
