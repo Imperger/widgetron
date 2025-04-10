@@ -49,7 +49,7 @@ interface UIInput extends OnlyUIInputProperties {
 
 }
 
-async function onUISetup(api: Environment): Promise<UIInput> {
+async function onUISetup(env: Environment): Promise<UIInput> {
     return { };
 }
 
