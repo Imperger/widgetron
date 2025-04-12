@@ -28,6 +28,9 @@ export type QueryFunction = (
 const db = new AppDb();
 let updateFunction: QueryFunction | null = null;
 
+const emitAction = (action: 'sendMessage', ...args: unknown[]) =>
+  self.postMessage({ action, args });
+
 self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
   switch (e.data.type) {
     case 'upload':
@@ -37,15 +40,21 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
       break;
     case 'execute':
       const AsyncFunction = async function () {}.constructor;
+      const action = { sendMessage: (text: string) => emitAction('sendMessage', text) };
+
       if (updateFunction instanceof AsyncFunction) {
-        const model = await updateFunction(e.data.args[0], { ...e.data.args[1], db });
+        const model = await updateFunction(e.data.args[0], { ...e.data.args[1], db, action });
 
         self.postMessage({
           requestId: e.data.requestId,
           return: { model, input: e.data.args[0] },
         });
       } else if (updateFunction instanceof Function) {
-        const model = updateFunction(e.data.args[0], { ...e.data.args[1], db });
+        const model = updateFunction(e.data.args[0], {
+          ...e.data.args[1],
+          db,
+          action,
+        });
 
         self.postMessage({
           requestId: e.data.requestId,

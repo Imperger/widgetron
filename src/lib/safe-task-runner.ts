@@ -1,3 +1,5 @@
+import { reinterpret_cast } from './reinterpret-cast';
+
 interface WorkerConstructor {
   new (otpions?: { name?: string }): Worker;
 }
@@ -18,7 +20,7 @@ interface PendingExecuteAction {
 }
 
 interface ActionResponseId {
-  requestId: number;
+  requestId?: number;
 }
 
 type PendingAction = ActionResponseId & (PendingUploadAction | PendingExecuteAction);
@@ -26,6 +28,10 @@ type PendingAction = ActionResponseId & (PendingUploadAction | PendingExecuteAct
 export type ActionResponse<T> = ActionResponseId & (T extends void ? object : { return: T });
 
 export type UploadActionResponse = ActionResponse<boolean>;
+
+export type ExternalMessageListener<T> = (data: T) => void;
+
+export type ExternalMessageListenerUnsubscriber = () => void;
 
 /**
  * Wrapper for a worker, that maintain worker in working state in case of infinite loops
@@ -35,6 +41,7 @@ export class SafeTaskRunner<T extends WorkerConstructor> {
   private instance!: Worker;
   public timeout = 1000;
   private pendingActions: PendingAction[] = [];
+  private readonly externalMessageListeners: ExternalMessageListener<unknown>[] = [];
 
   constructor(private readonly type: T) {
     this.setup();
@@ -66,6 +73,24 @@ export class SafeTaskRunner<T extends WorkerConstructor> {
     });
   }
 
+  subscribeToUnrecognizedMessages<T>(
+    listener: ExternalMessageListener<T>,
+  ): ExternalMessageListenerUnsubscriber {
+    this.externalMessageListeners.push(
+      reinterpret_cast<ExternalMessageListener<unknown>>(listener),
+    );
+
+    return () => {
+      const idx = this.externalMessageListeners.indexOf(
+        reinterpret_cast<ExternalMessageListener<unknown>>(listener),
+      );
+
+      if (idx !== -1) {
+        this.externalMessageListeners.splice(idx, 1);
+      }
+    };
+  }
+
   terminate(): void {
     this.instance.terminate();
   }
@@ -77,6 +102,12 @@ export class SafeTaskRunner<T extends WorkerConstructor> {
   }
 
   private onMessage(response: ActionResponse<unknown>): void {
+    if (response.requestId === undefined) {
+      this.externalMessageListeners.forEach((x) => x(response));
+
+      return;
+    }
+
     const actionIdx = this.pendingActions.findIndex((x) => x.requestId === response.requestId);
 
     if (actionIdx === -1) {

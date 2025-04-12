@@ -10,6 +10,7 @@ import {
   dbToken,
   gqlInterceptorToken,
   localStorageInterceptorToken,
+  twitchInteractorToken,
   widgetsToken,
 } from './injection-tokens';
 import { LocalStorageInterceptor } from './lib/interceptors/local-storage-interceptor';
@@ -21,6 +22,7 @@ import { WebsocketInterceptor } from './lib/interceptors/network-interceptor/web
 import { MountPointMaintainer } from './lib/mount-point-maintainer';
 import { waitUntil } from './lib/wait-until';
 import router from './router';
+import { TwitchInteractor } from './twitch/twitch-interactor';
 
 import type { WidgetInstance } from '@/widget/widget-instance';
 
@@ -38,6 +40,9 @@ function createMountingPoint() {
   fetchInterceptor.install();
 
   const gqlInterceptor = new GQLInterceptor();
+
+  const twitchInteractor = new TwitchInteractor(fetchInterceptor, gqlInterceptor);
+
   fetchInterceptor.subscribe(gqlInterceptor);
 
   const websocketIntrceptor = new WebsocketInterceptor(['wss://irc-ws.chat.twitch.tv:443']);
@@ -59,6 +64,7 @@ function createMountingPoint() {
   app.provide(dbToken, new ExtensionDB(db));
   app.provide(widgetsToken, ref<WidgetInstance[]>([]));
   app.provide(localStorageInterceptorToken, localStorageInterceptor);
+  app.provide(twitchInteractorToken, twitchInteractor);
 
   app.use(createPinia());
   app.use(router);

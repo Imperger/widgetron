@@ -2,7 +2,7 @@
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import * as ts from 'typescript';
-import { computed, onUnmounted, ref, toRaw, watch } from 'vue';
+import { computed, inject, onMounted, onUnmounted, ref, toRaw, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 import type { Environment, EnvironmentChannel } from './api/environment';
@@ -14,10 +14,11 @@ import type { WidgetModel } from './model/widget-model';
 import TableView from './table-view.vue';
 
 import FloatingWindow from '@/components/floating-window.vue';
+import { twitchInteractorToken } from '@/injection-tokens';
 import { JsonObjectComparator, type JSONObject } from '@/lib/json-object-equal';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
 import { safeEval } from '@/lib/safe-eval/safe-eval';
-import { SafeTaskRunner } from '@/lib/safe-task-runner';
+import { SafeTaskRunner, type ExternalMessageListenerUnsubscriber } from '@/lib/safe-task-runner';
 import { TypescriptExtractor } from '@/lib/typescript/typescript-extractor';
 import QueryWorker from '@/widget/widget-worker?worker&inline';
 
@@ -44,9 +45,18 @@ export type OnlyUIInputPropertiesWithType = {
   [K in keyof OnlyUIInputProperties]: UIInputComponentWithType;
 };
 
+interface SendMessageAction {
+  action: 'sendMessage';
+  args: [string];
+}
+
+type Action = SendMessageAction;
+
 const { label = '', updatePeriod, sourceCode } = defineProps<WidgetProps>();
 
 const emit = defineEmits<FloatingWidgetEvents>();
+
+const twitchInteractor = inject(twitchInteractorToken);
 
 const route = useRoute();
 
@@ -58,6 +68,16 @@ const worker = new SafeTaskRunner(QueryWorker);
 
 let unmounted = false;
 let isRunning = false;
+
+let actionListenerUnsub: ExternalMessageListenerUnsubscriber | null = null;
+
+const actionListener = async (action: Action) => {
+  switch (action.action) {
+    case 'sendMessage':
+      await twitchInteractor?.sendMessage(...action.args);
+      break;
+  }
+};
 
 const channelEnvironment = (): EnvironmentChannel | null => {
   if (route.params.channel === undefined) {
@@ -218,8 +238,14 @@ const uiInputComponents = computed(() =>
 const is = <T extends UIInputComponent>(x: object, type: string): x is T =>
   'type' in x && x.type === type;
 
+onMounted(() => {
+  actionListenerUnsub = worker.subscribeToUnrecognizedMessages<Action>(actionListener);
+});
+
 onUnmounted(() => {
   unmounted = true;
+
+  actionListenerUnsub?.();
 
   worker.terminate();
 });
