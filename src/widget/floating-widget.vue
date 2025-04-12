@@ -13,13 +13,13 @@ import UiTextInput from './input/ui-text-input.vue';
 import type { WidgetModel } from './model/widget-model';
 import TableView from './table-view.vue';
 
-import FloatingWindow from '@/components/floating-window.vue';
 import { twitchInteractorToken } from '@/injection-tokens';
 import { JsonObjectComparator, type JSONObject } from '@/lib/json-object-equal';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
 import { safeEval } from '@/lib/safe-eval/safe-eval';
 import { SafeTaskRunner, type ExternalMessageListenerUnsubscriber } from '@/lib/safe-task-runner';
 import { TypescriptExtractor } from '@/lib/typescript/typescript-extractor';
+import FloatingWindow from '@/ui/floating-window.vue';
 import QueryWorker from '@/widget/widget-worker?worker&inline';
 
 dayjs.extend(duration);

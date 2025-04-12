@@ -9,7 +9,7 @@ import TsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker&
 import { inject, onMounted, onUnmounted, ref } from 'vue';
 
 import { localStorageInterceptorToken } from '@/injection-tokens';
-import type { LocalStorageInterceptorListenerUnsubscriber } from '@/lib/interceptors/local-storage-interceptor';
+import type { LocalStorageInterceptorListenerUnsubscriber } from '@/twitch/local-storage-interceptor';
 
 self.MonacoEnvironment = {
   getWorker: function (_moduleId: unknown, label: string) {

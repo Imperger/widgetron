@@ -1,25 +1,25 @@
-export interface ChannelSelfEdge {
+interface ChannelSelfEdge {
   isAuthorized: boolean;
   restrictionType: string | null;
   __typename: 'ChannelSelfEdge';
 }
 
-export interface Trailer {
+interface Trailer {
   video: unknown | null;
   __typename: 'Trailer';
 }
 
-export interface ChannelHome {
+interface ChannelHome {
   preferences: ChannelHomePreferences;
   __typename: 'ChannelHome';
 }
 
-export interface ChannelHomePreferences {
+interface ChannelHomePreferences {
   heroPreset: string;
   __typename: 'ChannelHomePreferences';
 }
 
-export interface Channel {
+interface Channel {
   id: string;
   self: ChannelSelfEdge;
   trailer: Trailer;
@@ -27,13 +27,13 @@ export interface Channel {
   __typename: 'Channel';
 }
 
-export interface Stream {
+interface Stream {
   id: string;
   viewersCount: number;
   __typename: 'Stream';
 }
 
-export interface UserOrError {
+interface UserOrError {
   id: string;
   login: string;
   displayName: string;

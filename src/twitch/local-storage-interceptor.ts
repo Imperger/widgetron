@@ -1,4 +1,4 @@
-import { reinterpret_cast } from '../reinterpret-cast';
+import { reinterpret_cast } from '@/lib/reinterpret-cast';
 
 export interface LocalStorageInterceptorCallMap {
   set: (key: string, value: string) => boolean;

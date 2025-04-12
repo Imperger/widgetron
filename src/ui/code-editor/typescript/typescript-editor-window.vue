@@ -9,10 +9,10 @@ import TypescriptEditor, {
 } from './typescript-editor.vue';
 import { mergeValidators, type Validator } from './validators/merge-validators';
 
-import ErrorLog from '@/components/code-editor/error-log.vue';
-import FloatingWindow from '@/components/floating-window.vue';
-import PlayIcon from '@/components/icons/play-icon.vue';
-import TickIcon from '@/components/icons/tick-icon.vue';
+import ErrorLog from '@/ui/code-editor/error-log.vue';
+import FloatingWindow from '@/ui/floating-window.vue';
+import PlayIcon from '@/ui/icons/play-icon.vue';
+import TickIcon from '@/ui/icons/tick-icon.vue';
 import MyWidgetLabelDialog from '@/widget/my-widget-label-dialog.vue';
 
 export interface TypescriptEditorWindowProps {

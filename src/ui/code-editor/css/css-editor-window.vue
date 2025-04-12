@@ -6,9 +6,9 @@ import { computed, ref } from 'vue';
 import CssEditor, { type ValidationResultResolver } from './css-editor.vue';
 import { mergeValidators, type Validator } from './validators/merge-validators';
 
-import ErrorLog from '@/components/code-editor/error-log.vue';
-import FloatingWindow from '@/components/floating-window.vue';
-import TickIcon from '@/components/icons/tick-icon.vue';
+import ErrorLog from '@/ui/code-editor/error-log.vue';
+import FloatingWindow from '@/ui/floating-window.vue';
+import TickIcon from '@/ui/icons/tick-icon.vue';
 
 export interface CssEditorWindowProps {
   title?: string;

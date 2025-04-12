@@ -1,15 +1,8 @@
-import { JsonObjectComparator, type JSONObject } from '../../json-object-equal';
+import type { FetchInterceptorListener, FetchInterceptorRequest } from '../fetch-interceptor';
 
-import type { FetchInterceptorListener, FetchInterceptorRequest } from './fetch-interceptor';
+import type { Extensions } from './types/gql-request';
 
-export interface PersistentQuery {
-  sha256Hash: string;
-  version: number;
-}
-
-export interface Extensions {
-  persistedQuery: PersistentQuery;
-}
+import { JsonObjectComparator, type JSONObject } from '@/lib/json-object-equal';
 
 export interface GQLQuery {
   extensions?: Extensions;

@@ -7,8 +7,9 @@ import { useRoute } from 'vue-router';
 import { bodyMountPointMaintainerToken, gqlInterceptorToken } from '@/injection-tokens';
 import { type MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
-import type { ChatRestrictions } from '@/lib/types/gql/response/chat-restrictions';
 import { useFollowingStore } from '@/stores/following-store';
+import type { ChatRestrictionsResponse } from '@/twitch/gql/types/chat-restrictions-response';
+import type { GQLResponse } from '@/twitch/gql/types/gql-response';
 
 dayjs.extend(relativeTime);
 
@@ -23,7 +24,8 @@ let mountPointWatchReleaser: MountPointWatchReleaser | null = null;
 const chatRestrictionsUnsub = gqlInterceptor.subscribe(
   { operationName: 'ChatRestrictions' },
   (x) => {
-    const followingInfo = reinterpret_cast<ChatRestrictions>(x).data?.channel?.self?.follower;
+    const followingInfo =
+      reinterpret_cast<GQLResponse<ChatRestrictionsResponse>>(x).data?.channel?.self?.follower;
 
     if (followingInfo) {
       const date = new Date(followingInfo.followedAt);

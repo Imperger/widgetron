@@ -41,18 +41,7 @@ interface CurrentUser {
   __typename: 'User';
 }
 
-interface Data {
+export interface ChatRestrictionsResponse {
   channel: Channel;
   currentUser: CurrentUser;
-}
-
-interface Extensions {
-  durationMilliseconds: number;
-  operationName: string;
-  requestID: string;
-}
-
-export interface ChatRestrictions {
-  data: Data;
-  extensions: Extensions;
 }

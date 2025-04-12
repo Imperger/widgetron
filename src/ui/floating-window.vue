@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from 'vue';
 
-import CloseIcon from '@/components/icons/close-icon.vue';
+import CloseIcon from '@/ui/icons/close-icon.vue';
 
 interface MousePos {
   x: number;

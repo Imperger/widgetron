@@ -2,20 +2,20 @@
 import * as monaco from 'monaco-editor';
 import { computed, inject, markRaw, onMounted, onUnmounted, ref } from 'vue';
 
-import TypescriptEditorWindow from '@/components/code-editor/typescript/typescript-editor-window.vue';
-import type { ExtraLib } from '@/components/code-editor/typescript/typescript-editor.vue';
-import { requireFunctionValidator } from '@/components/code-editor/typescript/validators/require-function-validator';
-import DeleteIcon from '@/components/icons/delete-icon.vue';
-import EditIcon from '@/components/icons/edit-icon.vue';
-import ToolsIcon from '@/components/icons/tools-icon.vue';
-import TwitchMenuItemDivider from '@/components/twitch/twitch-menu/twitch-menu-item-divider.vue';
-import TwitchMenuItem from '@/components/twitch/twitch-menu/twitch-menu-item.vue';
-import TwitchMenu from '@/components/twitch/twitch-menu/twitch-menu.vue';
 import type { WidgetInfo } from '@/extension-db';
 import { bodyMountPointMaintainerToken, dbToken, widgetsToken } from '@/injection-tokens';
 import { cssVar } from '@/lib/css-var';
 import type { MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 import { ExternalLibCache } from '@/lib/typescript/external-lib-cache';
+import TypescriptEditorWindow from '@/ui/code-editor/typescript/typescript-editor-window.vue';
+import type { ExtraLib } from '@/ui/code-editor/typescript/typescript-editor.vue';
+import { requireFunctionValidator } from '@/ui/code-editor/typescript/validators/require-function-validator';
+import DeleteIcon from '@/ui/icons/delete-icon.vue';
+import EditIcon from '@/ui/icons/edit-icon.vue';
+import ToolsIcon from '@/ui/icons/tools-icon.vue';
+import TwitchMenuItemDivider from '@/ui/twitch/twitch-menu/twitch-menu-item-divider.vue';
+import TwitchMenuItem from '@/ui/twitch/twitch-menu/twitch-menu-item.vue';
+import TwitchMenu from '@/ui/twitch/twitch-menu/twitch-menu.vue';
 import FloatingWidget from '@/widget/floating-widget.vue';
 
 interface EditorInstance {

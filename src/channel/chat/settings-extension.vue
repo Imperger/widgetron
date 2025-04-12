@@ -2,19 +2,16 @@
 import * as monaco from 'monaco-editor';
 import { inject, onMounted, onUnmounted, ref } from 'vue';
 
-import CssEditorWindow from '@/components/code-editor/css/css-editor-window.vue';
-import { parsingErorValidator as parsingEror } from '@/components/code-editor/css/validators/parsing-error-validator';
-import { requireClassValidator as requireClass } from '@/components/code-editor/css/validators/require-class-validator';
-import GearIcon from '@/components/icons/gear-icon.vue';
-import TwitchToggle from '@/components/twitch/twitch-toggle.vue';
 import { bodyMountPointMaintainerToken, chatInterceptorToken } from '@/injection-tokens';
 import { CssInjector } from '@/lib/css-injector';
-import type {
-  ClearChatCommand,
-  ClearMsgCommand,
-} from '@/lib/interceptors/network-interceptor/chat-interceptor';
 import type { MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 import { useSettingsStore } from '@/stores/settings-store';
+import type { ClearChatCommand, ClearMsgCommand } from '@/twitch/chat-interceptor';
+import CssEditorWindow from '@/ui/code-editor/css/css-editor-window.vue';
+import { parsingErorValidator as parsingEror } from '@/ui/code-editor/css/validators/parsing-error-validator';
+import { requireClassValidator as requireClass } from '@/ui/code-editor/css/validators/require-class-validator';
+import GearIcon from '@/ui/icons/gear-icon.vue';
+import TwitchToggle from '@/ui/twitch/twitch-toggle.vue';
 
 const chatInterceptor = inject(chatInterceptorToken)!;
 const mountPointMaintainer = inject(bodyMountPointMaintainerToken)!;

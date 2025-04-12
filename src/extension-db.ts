@@ -1,6 +1,7 @@
 import type AppDB from './db/app-db';
-import type { WidgetSourceCode } from './db/widget-source-code';
-import type { ChatMessage } from './lib/interceptors/network-interceptor/chat-interceptor';
+
+import type { WidgetSourceCode } from '@/db/widget-source-code';
+import type { ChatMessage } from '@/twitch/chat-interceptor';
 
 export interface WidgetInfo {
   id: number;

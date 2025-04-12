@@ -5,7 +5,7 @@ import SettingsExtension from './settings-extension.vue';
 import ToolsMenu from './tools-menu.vue';
 
 import { chatInterceptorToken, dbToken } from '@/injection-tokens';
-import { type ChatMessage } from '@/lib/interceptors/network-interceptor/chat-interceptor';
+import { type ChatMessage } from '@/twitch/chat-interceptor';
 
 const db = inject(dbToken)!;
 const chatInterceptor = inject(chatInterceptorToken)!;

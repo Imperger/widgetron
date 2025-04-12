@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 
-import MyDialog from '@/components/my-dialog.vue';
+import MyDialog from '@/ui/my-dialog.vue';
 
 export interface MyWidgetLabelProps {
   placeholder?: string;

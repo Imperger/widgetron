@@ -1,36 +1,18 @@
-import type { GQLResponse } from './gql-response';
-import type { UseLiveResponse } from './use-live-response';
+import type { GQLRequest, PersistentQuery } from './gql/types/gql-request';
+import type { GQLResponse } from './gql/types/gql-response';
+import type { SendChatMessageRequest } from './gql/types/send-chat-message-request';
+import type { UseLiveResponse } from './gql/types/use-live-response';
 
+import type { JSONObject } from '@/lib/json-object-equal';
+import { reinterpret_cast } from '@/lib/reinterpret-cast';
 import type {
   FetchInterceptor,
   FetchInterceptorListenerUnsubscriber,
   FetchInterceptorRequest,
-} from '@/lib/interceptors/network-interceptor/fetch-interceptor';
-import type {
-  GQLInterceptor,
-  GQLQuery,
-  PersistentQuery,
-} from '@/lib/interceptors/network-interceptor/gql-interceptor';
-import type { JSONObject } from '@/lib/json-object-equal';
-import { reinterpret_cast } from '@/lib/reinterpret-cast';
+} from '@/twitch/fetch-interceptor';
+import type { GQLInterceptor } from '@/twitch/gql/gql-interceptor';
 
 type GQLHeaders = Record<(typeof TwitchInteractor.requiredHeaders)[number], string>;
-
-export interface SendChatMessageGQLQueryInputVariable extends JSONObject {
-  channelID: string;
-  message: string;
-  nonce: string;
-  replyParentMessageID: string | null;
-}
-
-export interface SendChatMessageGQLQueryVariables extends JSONObject {
-  input: SendChatMessageGQLQueryInputVariable;
-}
-
-export interface SendChatMessageGQLQuery extends GQLQuery {
-  operationName: 'sendChatMessage';
-  variables: SendChatMessageGQLQueryVariables;
-}
 
 export class TwitchInteractor {
   static readonly requiredHeaders = [
@@ -50,10 +32,7 @@ export class TwitchInteractor {
 
   private currentChannelId = '';
 
-  constructor(
-    fetchInterceptor: FetchInterceptor,
-    readonly glqInterceptor: GQLInterceptor,
-  ) {
+  constructor(fetchInterceptor: FetchInterceptor, glqInterceptor: GQLInterceptor) {
     this.fetchUnsub = fetchInterceptor.subscribe(this);
 
     this.knownPersistentQuery.set('sendChatMessage', {
@@ -71,7 +50,7 @@ export class TwitchInteractor {
       return false;
     }
 
-    const query: SendChatMessageGQLQuery = {
+    const query: GQLRequest<SendChatMessageRequest> = {
       operationName: 'sendChatMessage',
       extensions: { persistedQuery: this.knownPersistentQuery.get('sendChatMessage')! },
       variables: {
@@ -135,7 +114,7 @@ export class TwitchInteractor {
     }
   }
 
-  private async gqlQuery(query: GQLQuery): Promise<JSONObject | null> {
+  private async gqlQuery<T>(query: GQLRequest<T>): Promise<JSONObject | null> {
     try {
       return (
         await fetch('https://gql.twitch.tv/gql', {
