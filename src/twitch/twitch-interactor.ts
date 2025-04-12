@@ -1,5 +1,5 @@
-import type { ChannelShell } from './channel-shell-response';
 import type { GQLResponse } from './gql-response';
+import type { UseLiveResponse } from './use-live-response';
 
 import type {
   FetchInterceptor,
@@ -61,8 +61,8 @@ export class TwitchInteractor {
       version: 1,
     });
 
-    glqInterceptor.subscribe({ operationName: 'ChannelShell' }, (x) =>
-      this.onChannelChange(reinterpret_cast<GQLResponse<ChannelShell>>(x)),
+    glqInterceptor.subscribe({ operationName: 'UseLive' }, (x) =>
+      this.onChannelChange(reinterpret_cast<GQLResponse<UseLiveResponse>>(x)),
     );
   }
 
@@ -104,8 +104,8 @@ export class TwitchInteractor {
     return this.gqlHeaders !== null;
   }
 
-  private onChannelChange(x: GQLResponse<ChannelShell>) {
-    this.currentChannelId = x.data.userOrError.id;
+  private onChannelChange(x: GQLResponse<UseLiveResponse>) {
+    this.currentChannelId = x.data.user.id;
   }
 
   private captureGQLHeaders(init: RequestInit): boolean {
