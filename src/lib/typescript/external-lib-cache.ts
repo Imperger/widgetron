@@ -112,7 +112,10 @@ export class ExternalLibCache {
       ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
         'environment.ts',
         import.meta.glob('/src/widget/api/api.ts', { as: 'raw' }),
-        [{ type: 'interface', name: 'API' }],
+        [
+          { type: 'interface', name: 'API' },
+          { type: 'interface', name: 'ChatMessage' },
+        ],
         ['remove-export'],
       );
     }

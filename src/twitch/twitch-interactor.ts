@@ -46,7 +46,7 @@ export class TwitchInteractor {
   }
 
   async sendMessage(message: string): Promise<boolean> {
-    if (!this.isReady) {
+    if (!this.isReady || message.length === 0) {
       return false;
     }
 

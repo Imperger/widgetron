@@ -1,5 +1,7 @@
+import type { Action } from './api/action';
 import type { API } from './api/api';
 import type { OnlyUIInputProperties } from './input/only-ui-input-properties';
+import { MessagesAfterLastTick } from './messages-after-last-tick';
 import type { WidgetModel } from './model/widget-model';
 
 import AppDb from '@/db/app-db';
@@ -31,6 +33,9 @@ let updateFunction: QueryFunction | null = null;
 const emitAction = (action: 'sendMessage', ...args: unknown[]) =>
   self.postMessage({ action, args });
 
+const allMessagesAfterLastTick = new MessagesAfterLastTick(db);
+const channelMessagesAfterLastTick = new MessagesAfterLastTick(db);
+
 self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
   switch (e.data.type) {
     case 'upload':
@@ -40,10 +45,28 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
       break;
     case 'execute':
       const AsyncFunction = async function () {}.constructor;
-      const action = { sendMessage: (text: string) => emitAction('sendMessage', text) };
+
+      const [, api] = e.data.args;
+      const action: Action = {
+        sendMessage: (text: string) => emitAction('sendMessage', text),
+      };
+
+      const apiMethods = {
+        allMessagesAfterLastTick: () => allMessagesAfterLastTick.call(() => true),
+        channelMessagesAfterLastTick: () =>
+          channelMessagesAfterLastTick.call((x) => x.roomDisplayName === api.env.channel?.name),
+      };
+
+      allMessagesAfterLastTick.enterTick();
+      channelMessagesAfterLastTick.enterTick();
 
       if (updateFunction instanceof AsyncFunction) {
-        const model = await updateFunction(e.data.args[0], { ...e.data.args[1], db, action });
+        const model = await updateFunction(e.data.args[0], {
+          ...e.data.args[1],
+          db,
+          action,
+          ...apiMethods,
+        });
 
         self.postMessage({
           requestId: e.data.requestId,
@@ -54,6 +77,7 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
           ...e.data.args[1],
           db,
           action,
+          ...apiMethods,
         });
 
         self.postMessage({
@@ -61,6 +85,11 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
           return: { model, input: e.data.args[0] },
         });
       }
+
+      channelMessagesAfterLastTick.leaveTick();
+      allMessagesAfterLastTick.leaveTick();
+
+      break;
   }
 };
 
