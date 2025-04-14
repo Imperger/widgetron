@@ -1,6 +1,7 @@
 import type { FetchInterceptorListener, FetchInterceptorRequest } from '../fetch-interceptor';
 
 import type { Extensions } from './types/gql-request';
+import type { GQLResponse } from './types/gql-response';
 
 import { JsonObjectComparator, type JSONObject } from '@/lib/json-object-equal';
 
@@ -10,7 +11,7 @@ export interface GQLQuery {
   variables?: JSONObject;
 }
 
-export type GQLInterceptorListener = (data: JSONObject) => void;
+export type GQLInterceptorListener = (data: GQLResponse<unknown>) => void;
 
 interface GQLInterceptorRecord {
   query: GQLQuery;
@@ -41,7 +42,7 @@ export class GQLInterceptor implements FetchInterceptorListener {
       requestItems = [requestItems];
     }
 
-    const responseItems: JSONObject[] = await res.json();
+    const responseItems: GQLResponse<unknown>[] = await res.json();
 
     for (const [n, requestItem] of requestItems.entries()) {
       for (const subscriber of this.subscribers) {

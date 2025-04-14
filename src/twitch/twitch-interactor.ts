@@ -1,9 +1,15 @@
+import type { ChatLoginModerationTrackingRequest } from './gql/types/chat-login-moderation-tracking';
+import type { DeleteChatMessageRequest } from './gql/types/delete-chat-message-request';
+import type { DeleteChatMessageResponse } from './gql/types/delete-chat-message-response';
 import type { GQLRequest, PersistentQuery } from './gql/types/gql-request';
-import type { GQLResponse } from './gql/types/gql-response';
+import {
+  isGQLErrorResponse,
+  isGQLSuccessResponse,
+  type GQLResponse,
+} from './gql/types/gql-response';
 import type { SendChatMessageRequest } from './gql/types/send-chat-message-request';
 import type { UseLiveResponse } from './gql/types/use-live-response';
 
-import type { JSONObject } from '@/lib/json-object-equal';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
 import type {
   FetchInterceptor,
@@ -40,6 +46,16 @@ export class TwitchInteractor {
       version: 1,
     });
 
+    this.knownPersistentQuery.set('Chat_DeleteChatMessage', {
+      sha256Hash: 'b3a86ecf228824820543f7190362650e727b66d980b34722e27272d461410514',
+      version: 1,
+    });
+
+    this.knownPersistentQuery.set('ChatLoginModerationTracking', {
+      sha256Hash: '123ed6135cb4264e25ac0aeb67abe8ec8a656b1965f6a80d90530b5ddfe14696',
+      version: 1,
+    });
+
     glqInterceptor.subscribe({ operationName: 'UseLive' }, (x) =>
       this.onChannelChange(reinterpret_cast<GQLResponse<UseLiveResponse>>(x)),
     );
@@ -66,6 +82,42 @@ export class TwitchInteractor {
     return (await this.gqlQuery(query)) !== null;
   }
 
+  async deleteMessage(messageID: string): Promise<boolean> {
+    if (!this.isReady) {
+      return false;
+    }
+
+    const query: GQLRequest<DeleteChatMessageRequest> = {
+      operationName: 'Chat_DeleteChatMessage',
+      extensions: { persistedQuery: this.knownPersistentQuery.get('Chat_DeleteChatMessage')! },
+      variables: {
+        input: {
+          channelID: this.currentChannelId,
+          messageID,
+        },
+      },
+    };
+
+    const deleteMessageResponse = await this.gqlQuery<DeleteChatMessageResponse>(query);
+
+    if (deleteMessageResponse === null || isGQLErrorResponse(deleteMessageResponse)) {
+      return false;
+    }
+
+    const modTrackingQuery: GQLRequest<ChatLoginModerationTrackingRequest> = {
+      operationName: 'ChatLoginModerationTracking',
+      extensions: { persistedQuery: this.knownPersistentQuery.get('ChatLoginModerationTracking')! },
+      variables: {
+        channelID: this.currentChannelId,
+        targetUserID: deleteMessageResponse.data.deleteChatMessage.message.sender.id,
+      },
+    };
+
+    await this.gqlQuery(modTrackingQuery);
+
+    return true;
+  }
+
   async onRequest(req: FetchInterceptorRequest, _res: Response): Promise<boolean> {
     if (!req.input.toString().startsWith('https://gql.twitch.tv/gql')) {
       return false;
@@ -84,7 +136,9 @@ export class TwitchInteractor {
   }
 
   private onChannelChange(x: GQLResponse<UseLiveResponse>) {
-    this.currentChannelId = x.data.user.id;
+    if (isGQLSuccessResponse(x)) {
+      this.currentChannelId = x.data.user.id;
+    }
   }
 
   private captureGQLHeaders(init: RequestInit): boolean {
@@ -114,7 +168,7 @@ export class TwitchInteractor {
     }
   }
 
-  private async gqlQuery<T>(query: GQLRequest<T>): Promise<JSONObject | null> {
+  private async gqlQuery<T>(query: GQLRequest<unknown>): Promise<GQLResponse<T> | null> {
     try {
       return (
         await fetch('https://gql.twitch.tv/gql', {

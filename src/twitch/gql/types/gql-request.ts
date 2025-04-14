@@ -6,4 +6,5 @@ export interface PersistentQuery {
 export interface Extensions {
   persistedQuery: PersistentQuery;
 }
+
 export type GQLRequest<T> = { extensions: Extensions } & T;

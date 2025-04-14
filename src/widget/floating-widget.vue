@@ -50,7 +50,12 @@ interface SendMessageAction {
   args: [string];
 }
 
-type Action = SendMessageAction;
+interface DeleteMessageAction {
+  action: 'deleteMessage';
+  args: [string];
+}
+
+type Action = SendMessageAction | DeleteMessageAction;
 
 const { label = '', updatePeriod, sourceCode } = defineProps<WidgetProps>();
 
@@ -76,6 +81,8 @@ const actionListener = async (action: Action) => {
     case 'sendMessage':
       await twitchInteractor?.sendMessage(...action.args);
       break;
+    case 'deleteMessage':
+      await twitchInteractor?.deleteMessage(...action.args);
   }
 };
 

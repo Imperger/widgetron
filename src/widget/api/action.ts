@@ -5,4 +5,5 @@
 
 export interface Action {
   sendMessage(text: string): void;
+  deleteMessage(messageId: string): void;
 }
