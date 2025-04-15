@@ -55,7 +55,12 @@ interface DeleteMessageAction {
   args: [string];
 }
 
-type Action = SendMessageAction | DeleteMessageAction;
+interface BanUserAction {
+  action: 'banUser';
+  args: [string, string, string];
+}
+
+type Action = SendMessageAction | DeleteMessageAction | BanUserAction;
 
 const { label = '', updatePeriod, sourceCode } = defineProps<WidgetProps>();
 
@@ -83,6 +88,10 @@ const actionListener = async (action: Action) => {
       break;
     case 'deleteMessage':
       await twitchInteractor?.deleteMessage(...action.args);
+      break;
+    case 'banUser':
+      await twitchInteractor?.banUser(...action.args);
+      break;
   }
 };
 

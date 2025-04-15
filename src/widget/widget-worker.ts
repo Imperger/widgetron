@@ -30,7 +30,7 @@ export type QueryFunction = (
 const db = new AppDb();
 let updateFunction: QueryFunction | null = null;
 
-const emitAction = (action: 'sendMessage' | 'deleteMessage', ...args: unknown[]) =>
+const emitAction = (action: 'sendMessage' | 'deleteMessage' | 'banUser', ...args: unknown[]) =>
   self.postMessage({ action, args });
 
 const allMessagesAfterLastTick = new MessagesAfterLastTick(db);
@@ -50,6 +50,8 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
       const action: Action = {
         sendMessage: (text: string) => emitAction('sendMessage', text),
         deleteMessage: (messageId: string) => emitAction('deleteMessage', messageId),
+        banUser: (bannedUserLogin: string, expiresIn: string, reason = '') =>
+          emitAction('banUser', bannedUserLogin, expiresIn, reason),
       };
 
       const apiMethods = {

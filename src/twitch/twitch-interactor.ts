@@ -1,3 +1,5 @@
+import type { BanUserRequest } from './gql/types/ban-user-request';
+import type { BanUserResponse } from './gql/types/ban-user-response';
 import type { ChatLoginModerationTrackingRequest } from './gql/types/chat-login-moderation-tracking';
 import type { DeleteChatMessageRequest } from './gql/types/delete-chat-message-request';
 import type { DeleteChatMessageResponse } from './gql/types/delete-chat-message-response';
@@ -56,6 +58,11 @@ export class TwitchInteractor {
       version: 1,
     });
 
+    this.knownPersistentQuery.set('Chat_BanUserFromChatRoom', {
+      sha256Hash: 'd7be2d2e1e22813c1c2f3d9d5bf7e425d815aeb09e14001a5f2c140b93f6fb67',
+      version: 1,
+    });
+
     glqInterceptor.subscribe({ operationName: 'UseLive' }, (x) =>
       this.onChannelChange(reinterpret_cast<GQLResponse<UseLiveResponse>>(x)),
     );
@@ -110,6 +117,48 @@ export class TwitchInteractor {
       variables: {
         channelID: this.currentChannelId,
         targetUserID: deleteMessageResponse.data.deleteChatMessage.message.sender.id,
+      },
+    };
+
+    await this.gqlQuery(modTrackingQuery);
+
+    return true;
+  }
+
+  async banUser(bannedUserLogin: string, expiresIn: string, reason = ''): Promise<boolean> {
+    if (!this.isReady) {
+      return false;
+    }
+
+    const query: GQLRequest<BanUserRequest> = {
+      operationName: 'Chat_BanUserFromChatRoom',
+      extensions: { persistedQuery: this.knownPersistentQuery.get('Chat_BanUserFromChatRoom')! },
+      variables: {
+        input: {
+          channelID: this.currentChannelId,
+          bannedUserLogin,
+          expiresIn,
+          reason,
+        },
+      },
+    };
+
+    const deleteMessageResponse = await this.gqlQuery<BanUserResponse>(query);
+
+    if (
+      deleteMessageResponse === null ||
+      isGQLErrorResponse(deleteMessageResponse) ||
+      deleteMessageResponse.data.banUserFromChatRoom.ban === null
+    ) {
+      return false;
+    }
+
+    const modTrackingQuery: GQLRequest<ChatLoginModerationTrackingRequest> = {
+      operationName: 'ChatLoginModerationTracking',
+      extensions: { persistedQuery: this.knownPersistentQuery.get('ChatLoginModerationTracking')! },
+      variables: {
+        channelID: this.currentChannelId,
+        targetUserID: deleteMessageResponse.data.banUserFromChatRoom.ban.bannedUser.id,
       },
     };
 
