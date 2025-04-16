@@ -10,6 +10,7 @@ import { ExternalLibCache } from '@/lib/typescript/external-lib-cache';
 import TypescriptEditorWindow from '@/ui/code-editor/typescript/typescript-editor-window.vue';
 import type { ExtraLib } from '@/ui/code-editor/typescript/typescript-editor.vue';
 import { requireFunctionValidator } from '@/ui/code-editor/typescript/validators/require-function-validator';
+import { requireInterfaceValidator } from '@/ui/code-editor/typescript/validators/require-interface-validator';
 import DeleteIcon from '@/ui/icons/delete-icon.vue';
 import EditIcon from '@/ui/icons/edit-icon.vue';
 import ToolsIcon from '@/ui/icons/tools-icon.vue';
@@ -46,6 +47,10 @@ let mountPointWatchReleaser: MountPointWatchReleaser | null = null;
 
 const placeholder = `
 interface UIInput extends OnlyUIInputProperties {
+
+}
+
+interface SessionState {
 
 }
 
@@ -192,6 +197,7 @@ onUnmounted(() => {
     :extraLibs="widgetEditor.extraLibs"
     :placeholder="widgetEditor.placeholder"
     :validators="[
+      requireInterfaceValidator('SessionState'),
       requireFunctionValidator('onUISetup', ['Environment'], 'Promise<UIInput>'),
       requireFunctionValidator('onUpdate', ['UIInput', 'API'], 'Promise<WidgetModel>'),
     ]"

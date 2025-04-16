@@ -3,6 +3,9 @@ import type { Environment } from './environment';
 
 import type AppDB from '@/db/app-db';
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface SessionState {}
+
 export interface ChatMessage {
   id: string;
   roomId: string;
@@ -25,6 +28,8 @@ export interface API {
   env: Environment;
   db: AppDB;
   action: Action;
+  state: SessionState;
   channelMessagesAfterLastTick(): Promise<ChatMessage[]>;
   allMessagesAfterLastTick(): Promise<ChatMessage[]>;
+  isUndefined(x: unknown): boolean;
 }

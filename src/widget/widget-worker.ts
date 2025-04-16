@@ -5,6 +5,7 @@ import { MessagesAfterLastTick } from './messages-after-last-tick';
 import type { WidgetModel } from './model/widget-model';
 
 import AppDb from '@/db/app-db';
+import { autovivify, isUndefined } from '@/lib/autovivify';
 
 export interface UploadCodeMessage {
   type: 'upload';
@@ -36,6 +37,8 @@ const emitAction = (action: 'sendMessage' | 'deleteMessage' | 'banUser', ...args
 const allMessagesAfterLastTick = new MessagesAfterLastTick(db);
 const channelMessagesAfterLastTick = new MessagesAfterLastTick(db);
 
+const sessionState = autovivify();
+
 self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
   switch (e.data.type) {
     case 'upload':
@@ -58,6 +61,7 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
         allMessagesAfterLastTick: () => allMessagesAfterLastTick.call(() => true),
         channelMessagesAfterLastTick: () =>
           channelMessagesAfterLastTick.call((x) => x.roomDisplayName === api.env.channel?.name),
+        isUndefined,
       };
 
       allMessagesAfterLastTick.enterTick();
@@ -69,6 +73,7 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
           db,
           action,
           ...apiMethods,
+          state: sessionState,
         });
 
         self.postMessage({
@@ -81,6 +86,7 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
           db,
           action,
           ...apiMethods,
+          state: sessionState,
         });
 
         self.postMessage({
