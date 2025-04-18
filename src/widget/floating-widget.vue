@@ -216,6 +216,7 @@ watch(
 
 const onExecute = async () => {
   try {
+    const inputBeforeExecution = JSON.parse(JSON.stringify(toRaw(uiInput.value)));
     const result = reinterpret_cast<UpdateResult>(
       await worker.execute(toRaw(uiInput.value), { env: collectEnvironment() }),
     );
@@ -226,7 +227,9 @@ const onExecute = async () => {
         result.input,
       )
     ) {
-      uiInput.value = reinterpret_cast<OnlyUIInputPropertiesWithType>(result.input);
+      if (!JsonObjectComparator.equal(inputBeforeExecution, result.input)) {
+        uiInput.value = reinterpret_cast<OnlyUIInputPropertiesWithType>(result.input);
+      }
     } else {
       throw new Error('UIInput object is malformed');
     }
