@@ -1,6 +1,7 @@
 import type { InjectionKey, Ref } from 'vue';
 
 import type { ExtensionDB } from './extension-db';
+import type { SharedState } from './widget/shared-state';
 
 import type { MountPointMaintainer } from '@/lib/mount-point-maintainer';
 import type { ChatInterceptor } from '@/twitch/chat-interceptor';
@@ -16,3 +17,4 @@ export const dbToken = Symbol() as InjectionKey<ExtensionDB>;
 export const widgetsToken = Symbol() as InjectionKey<Ref<WidgetInstance[]>>;
 export const localStorageInterceptorToken = Symbol() as InjectionKey<LocalStorageInterceptor>;
 export const twitchInteractorToken = Symbol() as InjectionKey<TwitchInteractor>;
+export const widgetSharedStateToken = Symbol() as InjectionKey<SharedState>;

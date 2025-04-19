@@ -50,12 +50,26 @@ export interface ClearMsgCommand {
   timestamp: number;
 }
 
+export interface RoomStateCommand {
+  type: 'ROOMSTATE';
+  roomId: string;
+  roomDisplayName: string;
+  emoteOnly?: boolean;
+  followersOnly?: number; // minutes, -1 means it is turned off
+  slowMode?: number; // secods, 0 means it is turned off
+}
+
 export interface UnknownCommand {
   type: 'UNKNOWN';
   data: string;
 }
 
-export type ParsedMessageBody = UnknownCommand | ChatMessage | ClearChatCommand | ClearMsgCommand;
+export type ParsedMessageBody =
+  | UnknownCommand
+  | ChatMessage
+  | ClearChatCommand
+  | ClearMsgCommand
+  | RoomStateCommand;
 
 interface PacketHeader {
   tagsStr: string;
@@ -127,6 +141,8 @@ export class ChatInterceptor implements WebsocketInterceptorListener {
         return this.parseClearCommand({ tagsStr, source, command }, unparsed);
       case 'CLEARMSG':
         return this.parseClearMsgCommand({ tagsStr, source, command }, unparsed);
+      case 'ROOMSTATE':
+        return this.parseRoomStateCommand({ tagsStr, source, command }, unparsed);
       default:
         return { type: 'UNKNOWN', data: messageBody };
     }
@@ -224,6 +240,24 @@ export class ChatInterceptor implements WebsocketInterceptorListener {
       targetMessageId: tags.get('target-msg-id') ?? '',
       messageText: messageText.trimEnd(),
       timestamp: Number.parseInt(tags.get('tmi-sent-ts') ?? '0'),
+    };
+  }
+
+  private parseRoomStateCommand(header: PacketHeader, unparsed: string): RoomStateCommand {
+    const tags = this.parseTagsStr(header.tagsStr);
+    const [roomDisplayName] = splitFirstN(unparsed, ' :', 2);
+
+    return {
+      type: 'ROOMSTATE',
+      roomId: tags.get('room-id') ?? '',
+      roomDisplayName: roomDisplayName.slice(1).trimEnd(),
+      ...(tags.has('emote-only') && { emoteOnly: tags.get('emote-only') === '1' }),
+      ...(tags.has('followers-only') && {
+        followersOnly: Number.parseInt(tags.get('followers-only')!),
+      }),
+      ...(tags.has('slow') && {
+        slowMode: Number.parseInt(tags.get('slow')!),
+      }),
     };
   }
 }

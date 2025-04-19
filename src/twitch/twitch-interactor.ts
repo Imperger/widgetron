@@ -40,7 +40,7 @@ export class TwitchInteractor {
 
   private currentChannelId = '';
 
-  constructor(fetchInterceptor: FetchInterceptor, glqInterceptor: GQLInterceptor) {
+  constructor(fetchInterceptor: FetchInterceptor, gqlInterceptor: GQLInterceptor) {
     this.fetchUnsub = fetchInterceptor.subscribe(this);
 
     this.knownPersistentQuery.set('sendChatMessage', {
@@ -63,7 +63,7 @@ export class TwitchInteractor {
       version: 1,
     });
 
-    glqInterceptor.subscribe({ operationName: 'UseLive' }, (x) =>
+    gqlInterceptor.subscribe({ operationName: 'UseLive' }, (x) =>
       this.onChannelChange(reinterpret_cast<GQLResponse<UseLiveResponse>>(x)),
     );
   }
@@ -173,7 +173,6 @@ export class TwitchInteractor {
     }
 
     if (req.init && this.captureGQLHeaders(req.init)) {
-      console.log(req, _res);
       this.fetchUnsub!();
     }
 

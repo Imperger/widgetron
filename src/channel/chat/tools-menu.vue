@@ -3,7 +3,12 @@ import * as monaco from 'monaco-editor';
 import { computed, inject, markRaw, onMounted, onUnmounted, ref } from 'vue';
 
 import type { WidgetInfo } from '@/extension-db';
-import { bodyMountPointMaintainerToken, dbToken, widgetsToken } from '@/injection-tokens';
+import {
+  bodyMountPointMaintainerToken,
+  dbToken,
+  widgetSharedStateToken,
+  widgetsToken,
+} from '@/injection-tokens';
 import { cssVar } from '@/lib/css-var';
 import type { MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 import { ExternalLibCache } from '@/lib/typescript/external-lib-cache';
@@ -42,6 +47,8 @@ const widgetEditor = ref<EditorInstance | null>(null);
 const widgetPreview = ref<WidgetPreview | null>(null);
 
 const widgetList = ref<WidgetInfo[]>([]);
+
+const sharedState = inject(widgetSharedStateToken)!;
 
 let mountPointWatchReleaser: MountPointWatchReleaser | null = null;
 
@@ -165,6 +172,8 @@ const isWidgetEditorOpened = computed(() => widgetEditor.value !== null);
 
 onUnmounted(() => {
   mountPointWatchReleaser?.();
+
+  sharedState.channel = null;
 });
 </script>
 

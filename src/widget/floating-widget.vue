@@ -13,7 +13,7 @@ import UiTextInput from './input/ui-text-input.vue';
 import type { WidgetModel } from './model/widget-model';
 import TableView from './table-view.vue';
 
-import { twitchInteractorToken } from '@/injection-tokens';
+import { twitchInteractorToken, widgetSharedStateToken } from '@/injection-tokens';
 import { JsonObjectComparator, type JSONObject } from '@/lib/json-object-equal';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
 import { safeEval } from '@/lib/safe-eval/safe-eval';
@@ -68,6 +68,8 @@ const emit = defineEmits<FloatingWidgetEvents>();
 
 const twitchInteractor = inject(twitchInteractorToken);
 
+const sharedState = inject(widgetSharedStateToken)!;
+
 const route = useRoute();
 
 const uiInput = ref<OnlyUIInputPropertiesWithType | null>(null);
@@ -109,7 +111,7 @@ const channelEnvironment = (): EnvironmentChannel | null => {
   );
 
   if (viewers === -1) {
-    return { online: false, name };
+    return { online: false, name, chat: sharedState.channel?.chat ?? null };
   }
 
   const game =
@@ -137,6 +139,7 @@ const channelEnvironment = (): EnvironmentChannel | null => {
     game,
     startTime: new Date(Date.now() - duration),
     viewers,
+    chat: sharedState.channel?.chat ?? null,
   };
 };
 

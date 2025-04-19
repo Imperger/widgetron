@@ -11,9 +11,12 @@ import {
   gqlInterceptorToken,
   localStorageInterceptorToken,
   twitchInteractorToken,
+  widgetSharedStateToken,
   widgetsToken,
 } from './injection-tokens';
 import router from './router';
+import { SharedStateObserver } from './shared-state-observer';
+import type { SharedState } from './widget/shared-state';
 
 import { MountPointMaintainer } from '@/lib/mount-point-maintainer';
 import { waitUntil } from '@/lib/wait-until';
@@ -54,6 +57,10 @@ function createMountingPoint() {
   const localStorageInterceptor = new LocalStorageInterceptor();
   localStorageInterceptor.install();
 
+  const widgetSharedState: SharedState = { channel: null };
+
+  new SharedStateObserver(chatInterceptor, gqlInterceptor, widgetSharedState);
+
   await waitUntil(document, 'DOMContentLoaded');
 
   const app = createApp(App);
@@ -65,6 +72,7 @@ function createMountingPoint() {
   app.provide(widgetsToken, ref<WidgetInstance[]>([]));
   app.provide(localStorageInterceptorToken, localStorageInterceptor);
   app.provide(twitchInteractorToken, twitchInteractor);
+  app.provide(widgetSharedStateToken, widgetSharedState);
 
   app.use(createPinia());
   app.use(router);
