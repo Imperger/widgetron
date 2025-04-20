@@ -12,6 +12,8 @@ import type { UITextInput } from './input/ui-text-input';
 import UiTextInput from './input/ui-text-input.vue';
 import type { WidgetModel } from './model/widget-model';
 import TableView from './table-view.vue';
+import { isTextView } from './views/text-view-guard';
+import StringView from './views/text-view.vue';
 
 import { twitchInteractorToken, widgetSharedStateToken } from '@/injection-tokens';
 import { JsonObjectComparator, type JSONObject } from '@/lib/json-object-equal';
@@ -293,7 +295,9 @@ onUnmounted(() => {
       </template>
     </div>
     <div class="data-view">
-      <TableView v-if="model?.type === 'table'" :rows="model.rows" />
+      <div v-if="model === null">No view</div>
+      <StringView v-else-if="isTextView(model)" :value="model" />
+      <TableView v-else-if="model.type === 'table'" :rows="model.rows" />
     </div>
   </FloatingWindow>
 </template>
