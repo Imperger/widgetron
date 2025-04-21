@@ -151,7 +151,7 @@ onUnmounted(() => {
   />
 </template>
 
-<style scope>
+<style scoped>
 .deleted-message-visibility-option {
   display: flex;
   justify-content: space-between;

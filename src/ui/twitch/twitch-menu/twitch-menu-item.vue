@@ -32,7 +32,7 @@ const onClick = () => {
   </div>
 </template>
 
-<style scope>
+<style scoped>
 .menu-item {
   color: var(--color-text-base);
   padding: 0.5rem;

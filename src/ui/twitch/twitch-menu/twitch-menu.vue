@@ -62,7 +62,7 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style scope>
+<style scoped>
 .menu {
   position: absolute;
   padding: 1rem;

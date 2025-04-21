@@ -224,7 +224,7 @@ onUnmounted(() => {
   />
 </template>
 
-<style scope>
+<style scoped>
 .open-menu-btn {
   position: absolute;
   right: calc(25px + var(--button-size-default));
