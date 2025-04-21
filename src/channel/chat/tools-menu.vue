@@ -66,6 +66,7 @@ async function onUISetup(env: Environment): Promise<UIInput> {
 }
 
 async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
+    return null;
 }`;
 
 onMounted(async () => {
