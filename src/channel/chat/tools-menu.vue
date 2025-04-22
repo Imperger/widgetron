@@ -136,6 +136,8 @@ const onSave = async (label: string) => {
 
   if (widgetEditor.value?.id === undefined) {
     widgetList.value.push({ id, label });
+
+    widgetEditor.value!.id = id;
   } else {
     const editedWidget = widgetList.value.find((x) => x.id === id);
 
