@@ -61,7 +61,7 @@ interface SessionState {
 
 }
 
-async function onUISetup(env: Environment): Promise<UIInput> {
+async function onUISetup(api: API): Promise<UIInput> {
     return { };
 }
 
@@ -208,7 +208,7 @@ onUnmounted(() => {
     :placeholder="widgetEditor.placeholder"
     :validators="[
       requireInterfaceValidator('SessionState'),
-      requireFunctionValidator('onUISetup', ['Environment'], 'Promise<UIInput>'),
+      requireFunctionValidator('onUISetup', ['API'], 'Promise<UIInput>'),
       requireFunctionValidator('onUpdate', ['UIInput', 'API'], 'Promise<WidgetModel>'),
     ]"
     @initialized="(x) => onInitialized(x)"

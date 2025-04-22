@@ -6,6 +6,7 @@ import type { WidgetModel } from './model/widget-model';
 
 import AppDb from '@/db/app-db';
 import { autovivify, isUndefined } from '@/lib/autovivify';
+import { reinterpret_cast } from '@/lib/reinterpret-cast';
 
 export interface UploadCodeMessage {
   type: 'upload';
@@ -15,21 +16,29 @@ export interface UploadCodeMessage {
   parameters: string[];
 }
 
-export interface ExecuteMessage {
+export interface ExecuteonUISetupMessage {
   type: 'execute';
   requestId: number;
-  args: [OnlyUIInputProperties, API];
+  args: ['onUISetup', API];
 }
 
-export type IncomingMessage = UploadCodeMessage | ExecuteMessage;
+export interface ExecuteOnUpdateMessage {
+  type: 'execute';
+  requestId: number;
+  args: ['onUpdate', OnlyUIInputProperties, API];
+}
 
-export type QueryFunction = (
+export type IncomingMessage = UploadCodeMessage | ExecuteonUISetupMessage | ExecuteOnUpdateMessage;
+
+export type UISetupFunction = (api: API) => OnlyUIInputProperties | Promise<OnlyUIInputProperties>;
+
+export type UpdateFunction = (
   input: OnlyUIInputProperties,
   api: API,
 ) => WidgetModel | Promise<WidgetModel>;
 
 const db = new AppDb();
-let updateFunction: QueryFunction | null = null;
+let uploadedFunction: UISetupFunction | UpdateFunction | null = null;
 
 const emitAction = (action: 'sendMessage' | 'deleteMessage' | 'banUser', ...args: unknown[]) =>
   self.postMessage({ action, args });
@@ -49,7 +58,7 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
     case 'execute':
       const AsyncFunction = async function () {}.constructor;
 
-      const [, api] = e.data.args;
+      const [type, arg0] = e.data.args;
       const action: Action = {
         sendMessage: (text: string) => emitAction('sendMessage', text),
         deleteMessage: (messageId: string) => emitAction('deleteMessage', messageId),
@@ -57,41 +66,49 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
           emitAction('banUser', bannedUserLogin, expiresIn, reason),
       };
 
+      const outerAPI = APIFromArgs(e.data);
+
       const apiMethods = {
         allMessagesAfterLastTick: () => allMessagesAfterLastTick.call(() => true),
         channelMessagesAfterLastTick: () =>
-          channelMessagesAfterLastTick.call((x) => x.roomDisplayName === api.env.channel?.name),
+          channelMessagesAfterLastTick.call(
+            (x) => x.roomDisplayName === outerAPI.env.channel?.name,
+          ),
         isUndefined,
       };
+
+      const api: API = {
+        ...outerAPI,
+        db,
+        action,
+        ...apiMethods,
+        state: sessionState,
+      };
+
+      const fn =
+        type === 'onUISetup'
+          ? reinterpret_cast<UISetupFunction>(uploadedFunction)!.bind(null, api)
+          : reinterpret_cast<UpdateFunction>(uploadedFunction)!.bind(null, arg0, api);
 
       allMessagesAfterLastTick.enterTick();
       channelMessagesAfterLastTick.enterTick();
 
-      if (updateFunction instanceof AsyncFunction) {
-        const model = await updateFunction(e.data.args[0], {
-          ...e.data.args[1],
-          db,
-          action,
-          ...apiMethods,
-          state: sessionState,
-        });
+      let result: OnlyUIInputProperties | WidgetModel | null = null;
+      if (uploadedFunction instanceof AsyncFunction) {
+        result = await fn();
+      } else if (uploadedFunction instanceof Function) {
+        result = reinterpret_cast<OnlyUIInputProperties | WidgetModel>(fn());
+      }
 
+      if (type === 'onUISetup') {
         self.postMessage({
           requestId: e.data.requestId,
-          return: { model, input: e.data.args[0] },
+          return: result,
         });
-      } else if (updateFunction instanceof Function) {
-        const model = updateFunction(e.data.args[0], {
-          ...e.data.args[1],
-          db,
-          action,
-          ...apiMethods,
-          state: sessionState,
-        });
-
+      } else if (type === 'onUpdate') {
         self.postMessage({
           requestId: e.data.requestId,
-          return: { model, input: e.data.args[0] },
+          return: { model: result, input: arg0 },
         });
       }
 
@@ -105,5 +122,14 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
 function uploadSourceCode(async: boolean, parameters: string[], sourceCode: string): void {
   const createFn = async ? async function () {}.constructor : Function;
 
-  updateFunction = createFn(...parameters, sourceCode) as QueryFunction;
+  uploadedFunction = createFn(...parameters, sourceCode) as UpdateFunction;
+}
+
+function APIFromArgs(msg: ExecuteonUISetupMessage | ExecuteOnUpdateMessage): API {
+  switch (msg.args[0]) {
+    case 'onUISetup':
+      return msg.args[1];
+    case 'onUpdate':
+      return msg.args[2];
+  }
 }

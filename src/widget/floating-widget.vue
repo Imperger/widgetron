@@ -18,7 +18,6 @@ import StringView from './views/text-view.vue';
 import { twitchInteractorToken, widgetSharedStateToken } from '@/injection-tokens';
 import { JsonObjectComparator, type JSONObject } from '@/lib/json-object-equal';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
-import { safeEval } from '@/lib/safe-eval/safe-eval';
 import { SafeTaskRunner, type ExternalMessageListenerUnsubscriber } from '@/lib/safe-task-runner';
 import { TypescriptExtractor } from '@/lib/typescript/typescript-extractor';
 import FloatingWindow from '@/ui/floating-window.vue';
@@ -165,10 +164,13 @@ const setupUIInput = async (sourceFile: ts.SourceFile) => {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
 
-  const uiInputTemplate = await safeEval<OnlyUIInputProperties>(
-    onUISetupBody.async,
-    [{ parameter: 'env', value: collectEnvironment() }],
-    onUpdateBodyJs,
+  if (!(await worker.upload(onUISetupBody.async, ['api'], onUpdateBodyJs))) {
+    emit('close');
+    return null;
+  }
+
+  const uiInputTemplate = reinterpret_cast<OnlyUIInputProperties>(
+    await worker.execute('onUISetup', { env: collectEnvironment() }),
   );
 
   return [...Object.entries(uiInputTemplate)].reduce(
@@ -223,7 +225,7 @@ const onExecute = async () => {
   try {
     const inputBeforeExecution = JSON.parse(JSON.stringify(toRaw(uiInput.value)));
     const result = reinterpret_cast<UpdateResult>(
-      await worker.execute(toRaw(uiInput.value), { env: collectEnvironment() }),
+      await worker.execute('onUpdate', toRaw(uiInput.value), { env: collectEnvironment() }),
     );
 
     if (
