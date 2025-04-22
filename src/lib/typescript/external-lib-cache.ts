@@ -61,8 +61,15 @@ export class ExternalLibCache {
       );
 
       ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
-        'widget-model-table.ts',
+        'widget-model-text.ts',
         import.meta.glob('/src/widget/model/widget-model-text.ts', { as: 'raw' }),
+        [],
+        ['remove-export'],
+      );
+
+      ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
+        'widget-model-pie-chart.ts',
+        import.meta.glob('/src/widget/model/widget-model-pie-chart.ts', { as: 'raw' }),
         [],
         ['remove-export'],
       );
