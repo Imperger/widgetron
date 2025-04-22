@@ -12,7 +12,7 @@ export interface MyWidgetLabelDialogEvents {
   (e: 'cancel'): void;
 }
 
-const { placeholder } = defineProps<MyWidgetLabelProps>();
+const { placeholder = '' } = defineProps<MyWidgetLabelProps>();
 
 const show = defineModel<boolean>('show', { required: true });
 
@@ -22,7 +22,7 @@ const label = ref(placeholder ?? '');
 
 const closeDialog = () => {
   show.value = false;
-  label.value = '';
+  label.value = placeholder;
 };
 
 watch(show, (x) => !x && closeDialog());

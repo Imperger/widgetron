@@ -126,6 +126,8 @@ const onExecute = async () => {
 };
 
 const onSave = async (label: string) => {
+  widgetEditor.value!.label = label;
+
   const id = await db.saveWidget(
     label,
     widgetEditor.value!.instance!.getValue(),
