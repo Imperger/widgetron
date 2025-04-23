@@ -38,11 +38,32 @@ export interface PieChartProps {
 
 const { segments } = defineProps<PieChartProps>();
 
-const legendPosition = { x: 100, y: 5 };
-const legendFontSize = 5;
-const labelTextMarginLeft = legendFontSize + 1;
+const config = {
+  segment: { fontSize: 4 },
+  legend: {
+    position: { x: 100, y: 5 },
+    fontSize: 5,
+    textOffset: 6,
+  },
+};
 
-const colorPool = ['#1565C0', '#689F38', '#FFEB3B', '#F4511E', '#607D8B', '#D32F2F'];
+const colorPool = [
+  '#1565C0',
+  '#689F38',
+  '#FFEB3B',
+  '#F4511E',
+  '#607D8B',
+  '#D32F2F',
+  '#AA00FF',
+  '#27AE60',
+  '#F1C40F',
+  '#2C3E50',
+  '#E74C3C',
+  '#7F8C8D',
+  '#26C6DA',
+  '#EC407A',
+  '#AEEA00',
+];
 
 const pointOnCircleOffset = (
   radius: number,
@@ -110,8 +131,8 @@ const legend = computed<LegendLabel[]>(() =>
     : segmentPresentationModels.value.map((x, n) => ({
         label: segments[n].label,
         color: x.color,
-        x: legendPosition.x,
-        y: legendPosition.y + (n * legendFontSize + 1),
+        x: config.legend.position.x,
+        y: config.legend.position.y + (n * config.legend.fontSize + 1),
       })),
 );
 </script>
@@ -138,17 +159,18 @@ const legend = computed<LegendLabel[]>(() =>
     <text
       :key="segment.rotate"
       v-for="segment in segmentPresentationModels"
-      font-size="0.5em"
+      :font-size="`${config.segment.fontSize}px`"
       :x="segment.label.x"
-      :y="segment.label.y"
+      :y="segment.label.y + config.segment.fontSize / 2"
+      text-anchor="middle"
     >
       {{ segment.label.value }}
     </text>
     <g :key="n" v-for="(l, n) in legend">
-      <rect :x="l.x" :y="l.y - legendFontSize" :fill="l.color" width="5" height="5" />
+      <rect :x="l.x" :y="l.y - config.legend.fontSize" :fill="l.color" width="5" height="5" />
       <text
-        :font-size="`${legendFontSize}px`"
-        :x="l.x + labelTextMarginLeft"
+        :font-size="`${config.legend.fontSize}px`"
+        :x="l.x + config.legend.textOffset"
         :y="l.y"
         fill="var(--color-text-base)"
       >
