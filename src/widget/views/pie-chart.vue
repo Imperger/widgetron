@@ -139,6 +139,7 @@ const legend = computed<LegendLabel[]>(() =>
 
 <template>
   <svg
+    v-if="valuesSum > 0"
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 100 100"
     role="presentation"
@@ -178,6 +179,7 @@ const legend = computed<LegendLabel[]>(() =>
       </text>
     </g>
   </svg>
+  <div v-else>No data</div>
 </template>
 
 <style scoped>
