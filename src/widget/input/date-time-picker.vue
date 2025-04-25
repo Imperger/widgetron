@@ -113,10 +113,13 @@ const toggleDropdownPicker = () => {
 
   if (dropdownPickerShown.value) {
     prepickDatetime.value = model.value ?? new Date();
+    selectedDatetime.value = model.value ?? new Date();
 
     nextTick(
       () => (onClickOutsideDeactivator = onClickOutside(dateTimePickerEl.value!, closeDropdown)),
     );
+  } else {
+    closeDropdown();
   }
 };
 
