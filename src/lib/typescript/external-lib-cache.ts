@@ -89,6 +89,13 @@ export class ExternalLibCache {
       );
 
       ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
+        'ui-date-time-picker.ts',
+        import.meta.glob('/src/widget/input/ui-date-time-picker.ts', { as: 'raw' }),
+        [],
+        ['remove-export'],
+      );
+
+      ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
         'ui-slider-input.ts',
         import.meta.glob('/src/widget/input/ui-slider-input.ts', { as: 'raw' }),
         [],

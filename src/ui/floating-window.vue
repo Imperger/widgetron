@@ -107,7 +107,9 @@ onUnmounted(() => {
     <div @mousedown="onTitleDragStart" class="title-bar">
       <slot name="title-bar"></slot>
       <div class="title-bar-caption">{{ title }}</div>
-      <button @click="() => emit('close')" class="title-bar-closebtn"><CloseIcon /></button>
+      <button @click="() => emit('close')" class="title-bar-closebtn">
+        <CloseIcon color="#efeff1" />
+      </button>
     </div>
     <div class="floating-window-content">
       <slot></slot>
