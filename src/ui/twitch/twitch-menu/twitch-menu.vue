@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, provide, ref, type Ref } from 'vue';
+import { onMounted, onUnmounted, provide, ref, watch, type Ref } from 'vue';
 
 import { menuRootToken } from './injection-tokens';
 
@@ -28,7 +28,7 @@ onMounted(() => {
 
 const setupOutsideClickListener = () => {
   return componentRef.value?.parentElement
-    ? onClickOutside(componentRef.value.parentElement!, onClickOutsideListener)
+    ? onClickOutside(componentRef.value.parentElement!, (_e: Event) => (isShown.value = false))
     : null;
 };
 
@@ -38,15 +38,11 @@ const onTriggerClick = (e: Event) => {
   }
 
   isShown.value = !isShown.value;
-
-  if (isShown.value) {
-    onClickOutsideDeactivator = setupOutsideClickListener();
-  }
 };
 
-const onClickOutsideListener = (_e: Event) => {
-  isShown.value = false;
-};
+watch(isShown, (x) =>
+  x ? (onClickOutsideDeactivator = setupOutsideClickListener()) : onClickOutsideDeactivator?.(),
+);
 
 onUnmounted(() => {
   componentRef.value?.parentElement?.removeEventListener('click', onTriggerClick);

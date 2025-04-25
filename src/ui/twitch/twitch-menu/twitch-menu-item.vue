@@ -18,16 +18,19 @@ const emit = defineEmits<TwitchMenuItemEvents>();
 
 const menuRoot = inject(menuRootToken)!;
 
-const onClick = () => {
+const onClickCaptured = () => {
   if (closeOnClick) {
-    menuRoot.isShown.value = false;
+    setTimeout(() => (menuRoot.isShown.value = false), 0);
   }
-
-  emit('click');
 };
 </script>
 <template>
-  <div @click="onClick" :class="{ 'menu-item-disabled': disabled }" class="menu-item">
+  <div
+    @click.capture="onClickCaptured"
+    @click="emit('click')"
+    :class="{ 'menu-item-disabled': disabled }"
+    class="menu-item"
+  >
     <slot></slot>
   </div>
 </template>
