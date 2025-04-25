@@ -8,7 +8,7 @@ export function onClickOutside(
   onClick: OnClickOutsideHandler,
 ): OnListOutsideDeactivator {
   const listener = (e: Event) => {
-    if (!target.contains(reinterpret_cast<HTMLElement>(e.target))) {
+    if (!target.contains(reinterpret_cast<HTMLElement>(window.document.activeElement))) {
       onClick(e);
     }
   };
