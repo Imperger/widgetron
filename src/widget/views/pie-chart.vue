@@ -135,6 +135,10 @@ const legend = computed<LegendLabel[]>(() =>
         y: config.legend.position.y + (n * config.legend.fontSize + 1),
       })),
 );
+
+const nonEmptySegments = computed(() =>
+  segmentPresentationModels.value.filter((x) => x.fill !== 0),
+);
 </script>
 
 <template>
@@ -159,7 +163,7 @@ const legend = computed<LegendLabel[]>(() =>
     />
     <text
       :key="segment.rotate"
-      v-for="segment in segmentPresentationModels"
+      v-for="segment in nonEmptySegments"
       :font-size="`${config.segment.fontSize}px`"
       :x="segment.label.x"
       :y="segment.label.y + config.segment.fontSize / 2"
