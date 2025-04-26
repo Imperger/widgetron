@@ -237,7 +237,9 @@ const onExecute = async () => {
         result.input,
       )
     ) {
-      if (!JsonObjectComparator.equal(inputBeforeExecution, result.input)) {
+      if (
+        !JsonObjectComparator.equal(inputBeforeExecution, JSON.parse(JSON.stringify(result.input)))
+      ) {
         uiInput.value = reinterpret_cast<OnlyUIInputPropertiesWithType>(result.input);
       }
     } else {
