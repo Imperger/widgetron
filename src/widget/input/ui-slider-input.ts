@@ -4,8 +4,9 @@
  */
 
 export interface UISliderInput {
+  label?: string;
   min: number;
   max: number;
-  step: number;
+  step?: number;
   value: number;
 }

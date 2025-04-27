@@ -8,8 +8,10 @@ import { useRoute } from 'vue-router';
 import type { Environment, EnvironmentChannel } from './api/environment';
 import DateTimePicker from './input/date-time-picker.vue';
 import type { OnlyUIInputProperties } from './input/only-ui-input-properties';
+import SliderInput from './input/slider-input.vue';
 import type { UIDateTimePicker } from './input/ui-date-time-picker';
 import type { UIInputComponent } from './input/ui-input-component';
+import type { UISliderInput } from './input/ui-slider-input';
 import type { UITextInput } from './input/ui-text-input';
 import UiTextInput from './input/ui-text-input.vue';
 import type { WidgetModel } from './model/widget-model';
@@ -303,6 +305,15 @@ onUnmounted(() => {
           v-else-if="is<UIDateTimePicker>(component, 'UIDateTimePicker')"
           :value="component.date"
           @update:value="(e) => ((uiInput![component.id] as UIDateTimePicker).date = e)"
+        />
+        <SliderInput
+          v-else-if="is<UISliderInput>(component, 'UISliderInput')"
+          :label="component.label"
+          :min="component.min"
+          :max="component.max"
+          :step="component.step"
+          :value="component.value"
+          @update:value="(e) => ((uiInput![component.id] as UISliderInput).value = e)"
         />
       </template>
     </div>
