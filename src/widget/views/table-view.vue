@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { WidgetModelTable } from './model/widget-model-table';
+import type { WidgetModelTable } from '../model/widget-model-table';
 
 const { rows } = defineProps<Omit<WidgetModelTable, 'type'>>();
 </script>

@@ -15,8 +15,8 @@ import type { UISliderInput } from './input/ui-slider-input';
 import type { UITextInput } from './input/ui-text-input';
 import UiTextInput from './input/ui-text-input.vue';
 import type { WidgetModel } from './model/widget-model';
-import TableView from './table-view.vue';
 import PieChart from './views/pie-chart.vue';
+import TableView from './views/table-view.vue';
 import { isTextView } from './views/text-view-guard';
 import StringView from './views/text-view.vue';
 
