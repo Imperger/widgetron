@@ -22,6 +22,20 @@ export class ExtensionDB {
     }
   }
 
+  async shrinkMessages(count: number): Promise<number> {
+    const cutoffMessage = await this.db.messages.orderBy('timestamp').offset(count).first();
+
+    if (cutoffMessage) {
+      return this.db.messages.where('timestamp').belowOrEqual(cutoffMessage.timestamp).delete();
+    }
+
+    return 0;
+  }
+
+  async messageCount(): Promise<number> {
+    return this.db.messages.count();
+  }
+
   async saveWidget(label: string, sourceCode: string, id?: number): Promise<number> {
     try {
       return await this.db.widgets.put({ id, label, content: sourceCode });

@@ -2,6 +2,7 @@ import { createPinia } from 'pinia';
 import { createApp, ref } from 'vue';
 
 import App from './App.vue';
+import { storage } from './config';
 import { db } from './db/db';
 import { ExtensionDB } from './extension-db';
 import {
@@ -28,6 +29,20 @@ import { NavigationInterceptor } from '@/twitch/navigation-interceptor';
 import { TwitchInteractor } from '@/twitch/twitch-interactor';
 import { WebsocketInterceptor } from '@/twitch/websocket-interceptor';
 import type { WidgetInstance } from '@/widget/widget-instance';
+
+async function shrinkMessages(db: ExtensionDB): Promise<void> {
+  const totalMessages = await db.messageCount();
+
+  if (totalMessages > storage.message.hardMax) {
+    const deleted = await db.shrinkMessages(totalMessages - storage.message.softMax);
+
+    if (deleted > 0) {
+      console.info(
+        `Message storage exceeds the limit ${storage.message.hardMax}!  Deleting ${deleted} messages...`,
+      );
+    }
+  }
+}
 
 function createMountingPoint() {
   const mountingPoint = document.createElement('div');
@@ -57,18 +72,22 @@ function createMountingPoint() {
   const localStorageInterceptor = new LocalStorageInterceptor();
   localStorageInterceptor.install();
 
+  const extensionDB = new ExtensionDB(db);
+
   const widgetSharedState: SharedState = { channel: null };
 
   new SharedStateObserver(chatInterceptor, gqlInterceptor, widgetSharedState);
 
   await waitUntil(document, 'DOMContentLoaded');
 
+  await shrinkMessages(extensionDB);
+
   const app = createApp(App);
 
   app.provide(gqlInterceptorToken, gqlInterceptor);
   app.provide(chatInterceptorToken, chatInterceptor);
   app.provide(bodyMountPointMaintainerToken, new MountPointMaintainer(document.body));
-  app.provide(dbToken, new ExtensionDB(db));
+  app.provide(dbToken, extensionDB);
   app.provide(widgetsToken, ref<WidgetInstance[]>([]));
   app.provide(localStorageInterceptorToken, localStorageInterceptor);
   app.provide(twitchInteractorToken, twitchInteractor);
