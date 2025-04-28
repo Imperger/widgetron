@@ -424,6 +424,7 @@ const onSelect = () => {
 
 .dropdown-picker {
   position: absolute;
+  z-index: 1;
   top: calc(100% + 5px);
   padding: 5px;
   box-shadow: var(--shadow-elevation-2);
