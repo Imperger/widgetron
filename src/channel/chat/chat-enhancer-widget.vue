@@ -11,8 +11,6 @@ const db = inject(dbToken)!;
 const chatInterceptor = inject(chatInterceptorToken)!;
 
 const chatMessagesUnsub = chatInterceptor.subscribe<ChatMessage>('PRIVMSG', (x) => {
-  console.log(x);
-
   db.addMessage(x);
 
   return false;
