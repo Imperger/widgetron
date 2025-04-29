@@ -1,8 +1,14 @@
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
 
 export interface WebsocketInterceptorListenerResult {
-  isIntercepted: boolean; // if true - the message not being passed to next subscriber
-  isBlocked: boolean; // if true - the message not being passed to the 'message' event listeners
+  /**
+   * if true - the message not being passed to next subscriber
+   */
+  isIntercepted: boolean;
+  /**
+   * if true - the message not being passed to the 'message' event listeners
+   */
+  isBlocked: boolean;
 }
 
 export interface WebsocketInterceptorListener {

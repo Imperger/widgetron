@@ -17,6 +17,7 @@ import {
 } from './injection-tokens';
 import router from './router';
 import { SharedStateObserver } from './shared-state-observer';
+import { PubSubInterceptor } from './twitch/pub-sub-interceptor';
 import type { SharedState } from './widget/shared-state';
 
 import { MountPointMaintainer } from '@/lib/mount-point-maintainer';
@@ -63,11 +64,17 @@ function createMountingPoint() {
 
   fetchInterceptor.subscribe(gqlInterceptor);
 
-  const websocketIntrceptor = new WebsocketInterceptor(['wss://irc-ws.chat.twitch.tv:443']);
+  const websocketIntrceptor = new WebsocketInterceptor([
+    'wss://irc-ws.chat.twitch.tv:443',
+    'wss://pubsub-edge.twitch.tv:443/v1',
+  ]);
   websocketIntrceptor.install();
 
   const chatInterceptor = new ChatInterceptor();
   websocketIntrceptor.subscribe(chatInterceptor);
+
+  const pubSubInterceptor = new PubSubInterceptor();
+  websocketIntrceptor.subscribe(pubSubInterceptor);
 
   const localStorageInterceptor = new LocalStorageInterceptor();
   localStorageInterceptor.install();
@@ -76,7 +83,7 @@ function createMountingPoint() {
 
   const widgetSharedState: SharedState = { channel: null };
 
-  new SharedStateObserver(chatInterceptor, gqlInterceptor, widgetSharedState);
+  new SharedStateObserver(chatInterceptor, pubSubInterceptor, gqlInterceptor, widgetSharedState);
 
   await waitUntil(document, 'DOMContentLoaded');
 

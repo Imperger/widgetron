@@ -108,45 +108,23 @@ const channelEnvironment = (): EnvironmentChannel | null => {
     return null;
   }
 
-  const name = reinterpret_cast<string>(route.params.channel);
-
-  const viewers = Number.parseInt(
-    reinterpret_cast<HTMLElement | null>(
-      document.querySelector('[data-a-target="animated-channel-viewers-count"] span'),
-    )?.innerText ?? '-1',
-  );
-
-  if (viewers === -1) {
-    return { online: false, name, chat: sharedState.channel?.chat ?? null };
-  }
-
-  const game =
-    reinterpret_cast<HTMLElement | null>(
-      document.querySelector('[data-a-target="stream-game-link"] span'),
-    )?.innerText ?? '';
-
-  const durationStr =
-    reinterpret_cast<HTMLElement | null>(document.querySelector('.live-time span'))?.innerText ??
-    '0:0:0';
-
-  const [hours, minutes, seconds] = durationStr.split(':').map(Number);
-
-  const duration = dayjs
-    .duration({
-      hours,
-      minutes,
-      seconds,
-    })
-    .asMilliseconds();
-
-  return {
-    online: true,
-    name,
-    game,
-    startTime: new Date(Date.now() - duration),
-    viewers,
-    chat: sharedState.channel?.chat ?? null,
-  };
+  return sharedState.channel?.stream
+    ? {
+        online: true,
+        id: sharedState.channel?.roomId ?? '',
+        name: sharedState.channel.roomDisplayName,
+        game: sharedState.channel.game,
+        startTime: sharedState.channel!.stream!.startTime,
+        viewers: sharedState.channel.stream.viewers,
+        chat: sharedState.channel?.chat ?? null,
+      }
+    : {
+        online: false,
+        id: sharedState.channel?.roomId ?? '',
+        name: sharedState.channel?.roomDisplayName ?? '',
+        game: sharedState.channel?.game ?? '',
+        chat: sharedState.channel?.chat ?? null,
+      };
 };
 
 const collectEnvironment = (): Environment => {

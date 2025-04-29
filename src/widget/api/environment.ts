@@ -11,6 +11,7 @@ export interface ChannelChatSettings {
 
 export interface EnvironmentChannelOnline {
   online: true;
+  id: string;
   name: string;
   game: string;
   startTime: Date;
@@ -20,7 +21,9 @@ export interface EnvironmentChannelOnline {
 
 export interface EnvironmentChannelOffline {
   online: false;
+  id: string;
   name: string;
+  game: string;
   chat: ChannelChatSettings | null;
 }
 

@@ -1,3 +1,8 @@
+export interface Stream {
+  startTime: Date;
+  viewers: number;
+}
+
 export interface ChannelChat {
   emoteOnly: boolean;
   followersOnly: number;
@@ -7,6 +12,8 @@ export interface ChannelChat {
 export interface Channel {
   roomId: string;
   roomDisplayName: string;
+  game: string;
+  stream: Stream | null;
   chat: ChannelChat;
 }
 

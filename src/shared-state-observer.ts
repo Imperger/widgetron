@@ -7,21 +7,52 @@ import {
   isGQLSuccessResponse,
   type GQLResponse,
 } from './twitch/gql/types/gql-response';
+import type { PlayerTrackingContextQueryLiveResponse } from './twitch/gql/types/player-tracking-context-query-response';
 import type { UseLiveResponse } from './twitch/gql/types/use-live-response';
+import type {
+  BroadcastSettingsUpdateTopic,
+  PubSubInterceptor,
+  SubscriptionTopicWithSource,
+  ViewCountTopic,
+} from './twitch/pub-sub-interceptor';
 import type { ChannelChat, SharedState } from './widget/shared-state';
 
+interface ChannelCacheRecord extends ChannelChat {
+  game: string;
+  viewers: number;
+}
+
 export class SharedStateObserver {
-  private readonly chatRoomStateCache = new Map<string, ChannelChat>();
+  private readonly chatRoomStateCache = new Map<string, ChannelCacheRecord>();
 
   constructor(
     chatInterceptor: ChatInterceptor,
+    pubSubInterceptor: PubSubInterceptor,
     gqlInterceptor: GQLInterceptor,
     private readonly sharedState: SharedState,
   ) {
     chatInterceptor.subscribe<RoomStateCommand>('ROOMSTATE', (x) => this.onRoomState(x));
     gqlInterceptor.subscribe({ operationName: 'ChatRoomState' }, (x) => this.onChatRoomState(x));
+
     gqlInterceptor.subscribe({ operationName: 'UseLive' }, (x) =>
       this.onChannelChange(reinterpret_cast<GQLResponse<UseLiveResponse>>(x)),
+    );
+
+    gqlInterceptor.subscribe(
+      { operationName: 'PlayerTrackingContextQuery', variables: { isLive: true } },
+      (x) =>
+        this.onPlayerTrackingContextQuery(
+          reinterpret_cast<GQLResponse<PlayerTrackingContextQueryLiveResponse>>(x),
+        ),
+    );
+
+    pubSubInterceptor.subscribe<SubscriptionTopicWithSource<ViewCountTopic>>('viewcount', (x) =>
+      this.onViewCount(x),
+    );
+
+    pubSubInterceptor.subscribe<SubscriptionTopicWithSource<BroadcastSettingsUpdateTopic>>(
+      'broadcast_settings_update',
+      (x) => this.onBroadcastSettingsUpdate(x),
     );
   }
 
@@ -52,37 +83,100 @@ export class SharedStateObserver {
 
     this.sharedState.channel = {
       roomId: resp.data.channel.id,
-      roomDisplayName: '',
+      roomDisplayName: this.sharedState.channel?.roomDisplayName ?? '',
+      game: this.chatRoomStateCache.get(resp.data.channel.id)?.game ?? '',
+      stream: this.sharedState.channel?.stream ?? null,
       chat,
     };
   }
 
-  private updateCache(channelId: string, update: Partial<ChannelChat>): void {
+  private onChannelChange(x: GQLResponse<UseLiveResponse>) {
+    if (isGQLSuccessResponse(x)) {
+      const placeholder: ChannelCacheRecord = {
+        emoteOnly: false,
+        followersOnly: -1,
+        slowMode: 0,
+        game: '',
+        viewers: 0,
+      };
+
+      const chat = this.chatRoomStateCache.get(x.data.user.id) ?? placeholder;
+
+      this.sharedState.channel = {
+        roomId: x.data.user.id,
+        roomDisplayName: x.data.user.login,
+        game: this.chatRoomStateCache.get(x.data.user.id)?.game ?? '',
+        stream: x.data.user.stream
+          ? {
+              startTime: new Date(x.data.user.stream.createdAt),
+              viewers: this.chatRoomStateCache.get(x.data.user.id)?.viewers ?? 0,
+            }
+          : null,
+        chat: SharedStateObserver.sanitizeChat(chat),
+      };
+    }
+  }
+
+  private onPlayerTrackingContextQuery(x: GQLResponse<PlayerTrackingContextQueryLiveResponse>) {
+    if (isGQLSuccessResponse(x)) {
+      const placeholder: ChannelCacheRecord = {
+        emoteOnly: false,
+        followersOnly: -1,
+        slowMode: 0,
+        game: '',
+        viewers: 0,
+      };
+
+      const chat = this.chatRoomStateCache.get(x.data.user.id) ?? placeholder;
+
+      this.updateCache(x.data.user.id, { game: x.data.user.broadcastSettings.game.name });
+
+      this.sharedState.channel = {
+        roomId: x.data.user.id,
+        roomDisplayName: x.data.user.login,
+        game: x.data.user.broadcastSettings.game.name,
+        stream: this.sharedState.channel?.stream ?? null,
+        chat: SharedStateObserver.sanitizeChat(chat),
+      };
+    }
+  }
+
+  private onViewCount(x: SubscriptionTopicWithSource<ViewCountTopic>): boolean {
+    this.updateCache(x.channelId, { viewers: x.viewers });
+
+    if (x.channelId === this.sharedState.channel?.roomId && this.sharedState.channel.stream) {
+      this.sharedState.channel.stream.viewers = x.viewers;
+    }
+
+    return false;
+  }
+
+  private onBroadcastSettingsUpdate(
+    x: SubscriptionTopicWithSource<BroadcastSettingsUpdateTopic>,
+  ): boolean {
+    this.updateCache(x.channelId, { game: x.game });
+
+    if (x.channelId === this.sharedState.channel?.roomId) {
+      this.sharedState.channel.game = x.game;
+    }
+
+    return false;
+  }
+
+  private updateCache(channelId: string, update: Partial<ChannelCacheRecord>): void {
     const state = this.chatRoomStateCache.get(channelId);
 
     if (state) {
       this.chatRoomStateCache.set(channelId, { ...state, ...update });
     } else {
       this.chatRoomStateCache.set(channelId, {
-        ...{ emoteOnly: false, followersOnly: -1, slowMode: 0 },
+        ...{ emoteOnly: false, followersOnly: -1, slowMode: 0, game: '', viewers: 0 },
         ...update,
       });
     }
   }
 
-  private onChannelChange(x: GQLResponse<UseLiveResponse>) {
-    if (isGQLSuccessResponse(x)) {
-      const chat = this.chatRoomStateCache.get(x.data.user.id);
-
-      if (!chat) {
-        return;
-      }
-
-      this.sharedState.channel = {
-        roomId: x.data.user.id,
-        roomDisplayName: x.data.user.login,
-        chat,
-      };
-    }
+  private static sanitizeChat({ game: _, viewers: _0, ...x }: ChannelCacheRecord): ChannelChat {
+    return x;
   }
 }
