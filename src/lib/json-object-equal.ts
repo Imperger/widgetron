@@ -69,4 +69,35 @@ export class JsonObjectComparator {
       JsonObjectComparator.equalShape(obj1[key] as JSONObject, obj2[key] as JSONObject),
     );
   }
+
+  static isSubset(target: JSONObject, reference: JSONObject): boolean {
+    if (target === reference) return true;
+
+    if (typeof target === typeof reference && typeof target !== 'object') {
+      return target === reference;
+    }
+
+    if (
+      target == null ||
+      reference == null ||
+      typeof target !== 'object' ||
+      typeof reference !== 'object'
+    ) {
+      return false;
+    }
+
+    const targetKeys = Object.keys(target);
+    const referenceKeys = Object.keys(reference);
+
+    for (const key of targetKeys) {
+      if (
+        !referenceKeys.includes(key) ||
+        !JsonObjectComparator.isSubset(target[key] as JSONObject, reference[key] as JSONObject)
+      ) {
+        return false;
+      }
+    }
+
+    return true;
+  }
 }

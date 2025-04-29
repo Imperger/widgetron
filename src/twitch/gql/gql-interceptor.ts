@@ -4,6 +4,7 @@ import type { Extensions } from './types/gql-request';
 import type { GQLResponse } from './types/gql-response';
 
 import { JsonObjectComparator, type JSONObject } from '@/lib/json-object-equal';
+import { reinterpret_cast } from '@/lib/reinterpret-cast';
 
 export interface GQLQuery {
   extensions?: Extensions;
@@ -47,11 +48,10 @@ export class GQLInterceptor implements FetchInterceptorListener {
     for (const [n, requestItem] of requestItems.entries()) {
       for (const subscriber of this.subscribers) {
         if (
-          (subscriber.query.operationName === undefined &&
-            subscriber.query.variables === undefined) ||
-          (subscriber.query.operationName === requestItem.operationName &&
-            (subscriber.query.variables === undefined ||
-              JsonObjectComparator.equal(subscriber.query.variables, requestItem.variables)))
+          JsonObjectComparator.isSubset(
+            reinterpret_cast<JSONObject>(subscriber.query),
+            reinterpret_cast<JSONObject>(requestItem),
+          )
         ) {
           subscriber.listener(responseItems[n]);
         }
