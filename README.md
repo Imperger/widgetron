@@ -103,7 +103,11 @@ async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
   // Get the font size from the slider input
   const fontSize = input.fontSize.value + 'px';
 
-  // This is an advanced way to print text. The `type` indicates it's still text, the content is now passed through the `text` property, and the next two properties control the visual appearance: font size and color
+  /**
+   * This is an advanced way to print text. The `type` indicates it's still text,
+   * the content is now passed through the `text` property, and the next two properties
+   * control the visual appearance: font size and color
+   */
   return { type: 'text', text: days, fontSize, color: 'red' };
 }
 ```
