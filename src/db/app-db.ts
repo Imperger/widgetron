@@ -11,7 +11,7 @@ export default class AppDB extends Dexie {
     super('my-twitch-extension');
     this.version(1).stores({
       messages:
-        '&id, roomId, roomDisplayName, userId, displayName, subscriber, moderator, vip, turbo, returning, firstMessage, *badges, color, timestamp, [roomDisplayName+timestamp]',
+        '&id, roomId, roomDisplayName, userId, displayName, subscriber, moderator, vip, turbo, returning, firstMessage, *badges, color, timestamp, [roomId+timestamp]',
       widgets: '++id',
     });
 
