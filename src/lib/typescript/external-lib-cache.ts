@@ -139,6 +139,13 @@ export class ExternalLibCache {
         ],
         ['remove-export'],
       );
+
+      ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
+        'fixed-queue.ts',
+        import.meta.glob('/src/lib/fixed-queue.ts', { as: 'raw' }),
+        [],
+        ['remove-export'],
+      );
     }
 
     return ExternalLibCache.widgetTypesCode;

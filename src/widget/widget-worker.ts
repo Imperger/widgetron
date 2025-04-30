@@ -6,6 +6,7 @@ import type { WidgetModel } from './model/widget-model';
 
 import AppDb from '@/db/app-db';
 import { autovivify, isUndefined } from '@/lib/autovivify';
+import { FixedQueue } from '@/lib/fixed-queue';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
 
 export interface UploadCodeMessage {
@@ -30,12 +31,21 @@ export interface ExecuteOnUpdateMessage {
 
 export type IncomingMessage = UploadCodeMessage | ExecuteonUISetupMessage | ExecuteOnUpdateMessage;
 
-export type UISetupFunction = (api: API) => OnlyUIInputProperties | Promise<OnlyUIInputProperties>;
+export type UISetupFunction = (
+  api: API,
+  ...extra: unknown[]
+) => OnlyUIInputProperties | Promise<OnlyUIInputProperties>;
 
 export type UpdateFunction = (
   input: OnlyUIInputProperties,
   api: API,
+  ...extra: unknown[]
 ) => WidgetModel | Promise<WidgetModel>;
+
+interface ExtraType {
+  type: unknown;
+  name: string;
+}
 
 const db = new AppDb();
 let uploadedFunction: UISetupFunction | UpdateFunction | null = null;
@@ -49,9 +59,15 @@ const channelMessagesAfterLastTick = new MessagesAfterLastTick(db);
 const sessionState = autovivify();
 
 self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
+  const extraTypes: ExtraType[] = [{ type: FixedQueue, name: 'FixedQueue' }];
+
   switch (e.data.type) {
     case 'upload':
-      uploadSourceCode(e.data.async, e.data.parameters, e.data.sourceCode);
+      uploadSourceCode(
+        e.data.async,
+        [...e.data.parameters, ...extraTypes.map((x) => x.name)],
+        e.data.sourceCode,
+      );
 
       self.postMessage({ requestId: e.data.requestId, return: true });
       break;
@@ -85,10 +101,17 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
         state: sessionState,
       };
 
+      const extraTypesArgs = extraTypes.map((x) => x.type);
+
       const fn =
         type === 'onUISetup'
-          ? reinterpret_cast<UISetupFunction>(uploadedFunction)!.bind(null, api)
-          : reinterpret_cast<UpdateFunction>(uploadedFunction)!.bind(null, arg0, api);
+          ? reinterpret_cast<UISetupFunction>(uploadedFunction)!.bind(null, api, ...extraTypesArgs)
+          : reinterpret_cast<UpdateFunction>(uploadedFunction)!.bind(
+              null,
+              arg0,
+              api,
+              ...extraTypesArgs,
+            );
 
       allMessagesAfterLastTick.enterTick();
       channelMessagesAfterLastTick.enterTick();
