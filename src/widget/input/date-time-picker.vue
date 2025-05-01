@@ -112,8 +112,8 @@ const toggleDropdownPicker = () => {
   dropdownPickerShown.value = !dropdownPickerShown.value;
 
   if (dropdownPickerShown.value) {
-    prepickDatetime.value = model.value ?? new Date();
-    selectedDatetime.value = model.value ?? new Date();
+    prepickDatetime.value = new Date(model.value ?? new Date());
+    selectedDatetime.value = new Date(model.value ?? new Date());
 
     nextTick(
       () => (onClickOutsideDeactivator = onClickOutside(dateTimePickerEl.value!, closeDropdown)),
@@ -126,7 +126,7 @@ const toggleDropdownPicker = () => {
 const closeDropdown = () => {
   dropdownPickerShown.value = false;
   mode.value = 'date';
-  selectedDatetime.value = model.value ?? new Date();
+  selectedDatetime.value = new Date(model.value ?? new Date());
 
   onClickOutsideDeactivator?.();
 };
@@ -263,7 +263,7 @@ const onOpenHourSelector = () => (mode.value = 'time_hours');
 const onOpenMinuteSelector = () => (mode.value = 'time_minutes');
 
 const onSelect = () => {
-  model.value = selectedDatetime.value;
+  model.value = new Date(selectedDatetime.value);
 
   closeDropdown();
 };
