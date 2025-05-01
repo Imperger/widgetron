@@ -148,3 +148,54 @@ async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
   return api.state.counter.toString();
 }
 ```
+
+### Reading messages
+
+- Use `api.channelMessagesAfterLastTick` or `api.allMessagesAfterLastTick` to read messages in real time
+
+- Alternatively, you can read from the message log using `api.db.messages`. All messages that appear in the chat are stored in `api.db.messages`.
+
+```ts
+interface UIInput extends OnlyUIInputProperties {}
+
+interface MyMessage {
+  displayName: string;
+  text: string;
+  badges: string[];
+}
+
+interface SessionState {
+  messages: FixedQueue<MyMessage>;
+}
+
+async function onUISetup(api: API): Promise<UIInput> {
+  const messageLog = await api.db.messages
+    .where('[roomId+timestamp]')
+    .between([api.env.channel.id, 0], [api.env.channel.id, Date.now()])
+    .reverse()
+    .limit(10)
+    .toArray();
+
+  api.state.messages = FixedQueue.fromArray(messageLog.reverse(), 10);
+
+  api.channelMessagesAfterLastTick();
+
+  return {};
+}
+
+async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
+  const messages = await api.channelMessagesAfterLastTick();
+
+  messages.forEach((x) => api.state.messages.enqueue(x));
+
+  return {
+    type: 'table',
+    rows: api.state.messages
+      .toArray()
+      .reverse()
+      .map((x) => ({
+        cells: [{ text: x.displayName }, { text: x.text }],
+      })),
+  };
+}
+```
