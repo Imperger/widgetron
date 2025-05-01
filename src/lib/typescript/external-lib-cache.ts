@@ -11,7 +11,7 @@ interface SelectionRule {
   name: string;
 }
 
-type TransformationRule = 'remove-export';
+type TransformationRule = 'remove-export' | 'declaration-only';
 
 export class ExternalLibCache {
   private static dexieCode = '';
@@ -36,21 +36,21 @@ export class ExternalLibCache {
         'message.ts',
         import.meta.glob('/src/db/message.ts', { as: 'raw' }),
         [{ type: 'class', name: 'Message' }],
-        ['remove-export'],
+        ['remove-export', 'declaration-only'],
       );
 
       ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
         'widget-source-code.ts',
         import.meta.glob('/src/db/widget-source-code.ts', { as: 'raw' }),
         [{ type: 'class', name: 'WidgetSourceCode' }],
-        ['remove-export'],
+        ['remove-export', 'declaration-only'],
       );
 
       ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
         'app-db.ts',
         import.meta.glob('/src/db/app-db.ts', { as: 'raw' }),
         [{ type: 'class', name: 'AppDB' }],
-        ['remove-export'],
+        ['remove-export', 'declaration-only'],
       );
 
       ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
@@ -144,7 +144,7 @@ export class ExternalLibCache {
         'fixed-queue.ts',
         import.meta.glob('/src/lib/fixed-queue.ts', { as: 'raw' }),
         [],
-        ['remove-export'],
+        ['remove-export', 'declaration-only'],
       );
     }
 
@@ -213,6 +213,8 @@ export class ExternalLibCache {
     switch (rule) {
       case 'remove-export':
         return TypescriptTransformer.removeExport(sourceCode);
+      case 'declaration-only':
+        return TypescriptTransformer.declarationOnly(sourceCode);
     }
   }
 }
