@@ -31,5 +31,6 @@ const style = computed(() =>
   display: flex;
   flex-direction: row;
   justify-content: center;
+  white-space: pre-wrap;
 }
 </style>
