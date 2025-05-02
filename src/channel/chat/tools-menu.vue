@@ -247,6 +247,10 @@ onUnmounted(() => {
 }
 
 .widget-menu-label {
+  max-width: 110px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   margin-right: 10px;
 }
 
