@@ -3,7 +3,7 @@
 ## Features
 
 - Displays the date a user started following a channel
-- Keeps deleted messages visible in the chat (chat setting)
+- Keeps deleted messages visible in chat (configurable via chat settings)
 - Scriptable widgets written in TypeScript
 
 ## Build
@@ -62,7 +62,7 @@ async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
   const a = Number.parseFloat(input.a.text); // convert a input text value to number
   const b = Number.parseFloat(input.b.text); // convert b input text value to number
 
-  // the returned value of the function is displayed on the widget, right under the inputs
+  // The returned value of the function is displayed on the widget, right under the inputs
   return `${input.a.text} + ${input.b.text} = ${a + b}`;
 }
 ```
@@ -143,41 +143,118 @@ async function onUISetup(api: API): Promise<UIInput> {
 }
 
 async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
-  api.state.counter++; //increase the counter
+  api.state.counter++; // increase the counter
 
   return api.state.counter.toString();
 }
 ```
 
-### Reading messages
+### Environment
 
-- Use `api.channelMessagesAfterLastTick` or `api.allMessagesAfterLastTick` to read messages in real time
-
-- Alternatively, you can read from the message log using `api.db.messages`. All messages that appear in the chat are stored in `api.db.messages`.
+A widget can access information about the current stream through `api.env.channel`.
 
 ```ts
 interface UIInput extends OnlyUIInputProperties {}
 
-interface MyMessage {
-  displayName: string;
-  text: string;
-  badges: string[];
+interface SessionState {}
+
+async function onUISetup(api: API): Promise<UIInput> {
+  return {};
 }
 
+async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
+  if (!api.env.channel) {
+    return 'Open some stream...';
+  }
+
+  const isLive = api.env.channel.online ? '🟢' : '🔴';
+
+  let view = `Stream ${api.env.channel.name} is ${isLive}.\n`;
+
+  // If the stream is live, include game and viewer count
+  if (api.env.channel.online) {
+    view += `Playing in ${api.env.channel.game} with ${api.env.channel.viewers} viewers`;
+  }
+
+  return view;
+}
+```
+
+### Reading messages
+
+- Use `api.channelMessagesAfterLastTick()` or `api.allMessagesAfterLastTick()` to read messages in real time.
+
+- Alternatively, the message log can be read using `api.db.messages`. All messages that appear in the chat are stored in `api.db.messages`.
+
+Below is an example that demonstrates both approaches.
+The `messages` variable is defined inside `SessionState` and holds chat messages to be displayed in the widget.
+In `onUISetup`, `api.db.messages` is used to fetch the latest 10 messages from the persistent log.
+In `onUpdate`, `api.channelMessagesAfterLastTick` is used to read new messages in real time, which are then stored in `messages`.
+Finally, the messages are rendered as a table.
+
+```ts
+interface UIInput extends OnlyUIInputProperties {}
+
 interface SessionState {
-  messages: FixedQueue<MyMessage>;
+  /**
+   * FixedQueue is a structure that maintains a fixed size by
+   * removing the oldest item when a new one is added
+   */
+  messages: FixedQueue<ChatMessage>;
 }
 
 async function onUISetup(api: API): Promise<UIInput> {
+  const latestN = 10;
+
+  // Query the latest 10 messages from the message log for the current channel
   const messageLog = await api.db.messages
     .where('[roomId+timestamp]')
     .between([api.env.channel.id, 0], [api.env.channel.id, Date.now()])
-    .reverse()
-    .limit(10)
+    .reverse() // newest messages first
+    .limit(latestN)
     .toArray();
 
-  api.state.messages = FixedQueue.fromArray(messageLog.reverse(), 10);
+  // Initialize the message queue with the fetched messages, in correct chronological order
+  api.state.messages = FixedQueue.fromArray(messageLog.reverse(), latestN);
 
+  // Start tracking new real-time messages
+  await api.channelMessagesAfterLastTick();
+
+  return {};
+}
+
+async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
+  // Get real-time messages received since the last update tick
+  const messages = await api.channelMessagesAfterLastTick();
+
+  // Add each new message to the queue, maintaining a fixed size
+  messages.forEach((x) => api.state.messages.enqueue(x));
+
+  // Render messages in a table with two columns: display name and message text
+  return {
+    type: 'table',
+    rows: api.state.messages
+      .toArray()
+      .reverse() //  most recent message at the top
+      .map((x) => ({
+        cells: [{ text: x.displayName }, { text: x.text }],
+      })),
+  };
+}
+```
+
+### Sending Messages
+
+To send a message to the chat use `api.action.sendMessage(text: string)`.
+
+The following example reacts to the !hello command and replies by mentioning the user who triggered it.
+
+```ts
+interface UIInput extends OnlyUIInputProperties {}
+
+interface SessionState {}
+
+async function onUISetup(api: API): Promise<UIInput> {
   api.channelMessagesAfterLastTick();
 
   return {};
@@ -186,16 +263,68 @@ async function onUISetup(api: API): Promise<UIInput> {
 async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
   const messages = await api.channelMessagesAfterLastTick();
 
-  messages.forEach((x) => api.state.messages.enqueue(x));
+  // Look for a message starting with the command "!hello"
+  const trigger = messages.find((x) => x.text.startsWith('!hello'));
 
-  return {
-    type: 'table',
-    rows: api.state.messages
-      .toArray()
-      .reverse()
-      .map((x) => ({
-        cells: [{ text: x.displayName }, { text: x.text }],
-      })),
-  };
+  if (trigger) {
+    // Send a reply that mentions the user who triggered the command
+    api.action.sendMessage(`Hello from a wdiget @${trigger.displayName}`);
+  }
+
+  return null;
+}
+```
+
+### Deleting messages
+
+To delete specific message use `api.action.deleteMessage(messageId: string)`.
+
+The following example reacts to the !vanish command by deleting the command message itself, and—if found—also deletes the user's previous message sent within the last minute.
+
+```ts
+interface UIInput extends OnlyUIInputProperties {}
+
+interface SessionState {}
+
+async function onUISetup(api: API): Promise<UIInput> {
+  // Start receiving live chat messages
+  await api.channelMessagesAfterLastTick();
+
+  return {};
+}
+
+async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
+  const cmd = '!vanish';
+  const captureTimeWindow = 60 * 1000; // 1 minute in milliseconds
+
+  // Get new messages since the last update
+  const messages = await api.channelMessagesAfterLastTick();
+
+  const trigger = messages.find((x) => x.text.startsWith(cmd));
+
+  if (!trigger) {
+    return null;
+  }
+
+  // Delete the "!vanish" command message itself
+  api.action.deleteMessage(trigger.id);
+
+  const now = Date.now();
+
+  // Get all recent messages from the log (within the last minute)
+  const log = await api.db.messages
+    .where('[roomId+timestamp]')
+    .between([api.env.channel.id, now - deletionTimeWindow], [api.env.channel.id, now])
+    .toArray();
+
+  // Find the last message from the same user that isn't the "!vanish" command
+  const messageToDelete = log.findLast((x) => x.text !== cmd && x.userId === trigger.userId);
+
+  if (messageToDelete) {
+    // Delete that message too
+    api.action.deleteMessage(messageToDelete.id);
+  }
+
+  return null;
 }
 ```
