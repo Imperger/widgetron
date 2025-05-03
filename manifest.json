@@ -1,6 +1,6 @@
 {
   "name": "Widgetron ",
-  "description": "Widgetron enhances the Twitch chat experience by showing when users started following a channel, optionally keeping deleted messages visible, and letting you create custom widgets directly on Twitch using a built-in code editor with syntax highlighting.",
+  "description": "Widgetron shows follow dates, keeps deleted messages, and lets you build custom Twitch widgets with a built-in code editor.",
   "version": "0.5.0",
   "manifest_version": 3,
   "action": {
