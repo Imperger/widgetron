@@ -1,10 +1,15 @@
 {
-  "name": "Twitch-extension",
-  "description": "Base Level Extension",
-  "version": "1.0",
+  "name": "Widgetron ",
+  "description": "Widgetron enhances the Twitch chat experience by showing when users started following a channel, optionally keeping deleted messages visible, and letting you create custom widgets directly on Twitch using a built-in code editor with syntax highlighting.",
+  "version": "0.5.0",
   "manifest_version": 3,
   "action": {
-    "default_icon": "client/extension/icon.png"
+    "default_icon": {
+      "16": "client/extension/icon_16.png",
+      "32": "client/extension/icon_32.png",
+      "48": "client/extension/icon_48.png",
+      "128": "client/extension/icon_128.png"
+    }
   },
   "content_scripts": [
     {
@@ -12,5 +17,11 @@
       "run_at": "document_start",
       "world": "MAIN"
     }
-  ]
+  ],
+  "icons": {
+    "16": "client/extension/icon_16.png",
+    "32": "client/extension/icon_32.png",
+    "48": "client/extension/icon_48.png",
+    "128": "client/extension/icon_128.png"
+  }
 }

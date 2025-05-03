@@ -1,4 +1,6 @@
-# Twitch Extension
+# Widgetron
+
+![Logo](./resources/icon.svg)
 
 ## Features
 

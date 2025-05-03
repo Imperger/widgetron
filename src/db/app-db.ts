@@ -8,7 +8,7 @@ export default class AppDB extends Dexie {
   widgets!: EntityTable<WidgetSourceCode, 'id'>;
 
   constructor() {
-    super('my-twitch-extension');
+    super('widgetron-twitch-extension');
     this.version(1).stores({
       messages:
         '&id, roomId, roomDisplayName, userId, displayName, subscriber, moderator, vip, turbo, returning, firstMessage, *badges, color, timestamp, [roomId+timestamp]',
