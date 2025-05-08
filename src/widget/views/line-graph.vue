@@ -108,7 +108,7 @@ const sharpPath = (yValues: number[]): string => {
 };
 
 const calcPoint = (yValues: number[], n: number): Point | null =>
-  n >= 0 && n < yValues.length
+  n >= 0 && n < yValues.length && !Number.isNaN(yValues[n])
     ? {
         x: graphViewBox.x + n * xStep.value,
         y: graphViewBox.y + graphViewBox.height - yStep.value * (yValues[n] - yMinMax.value[0]),
@@ -243,10 +243,15 @@ const highlightedYAxisValues = computed(() => {
     return [];
   }
 
-  return drawableSeries.value.map((s) => ({
-    idx: closestXAxisIdx.value,
-    ...calcPoint(s.values, closestXAxisIdx.value)!,
-  }));
+  return drawableSeries.value.map((s) => {
+    const point = calcPoint(s.values, closestXAxisIdx.value);
+    return point
+      ? {
+          idx: closestXAxisIdx.value,
+          ...point,
+        }
+      : null;
+  });
 });
 
 const legend = computed<LegendLabel[]>(() =>
@@ -319,16 +324,18 @@ onUnmounted(() => {
     </g>
     <g class="highlight-y-values">
       <g :key="n" v-for="(h, n) of highlightedYAxisValues" class="highlight-y-value">
-        <text
-          :font-size="`${config.highlight.label.fontSize}px`"
-          :x="h.x"
-          :y="h.y + config.highlight.label.offsetY"
-          fill="var(--color-text-base)"
-          text-anchor="middle"
-        >
-          {{ drawableSeries[n].values[h.idx] }}
-        </text>
-        <circle :cx="h.x" :cy="h.y" :r="config.highlight.circleRadius" :fill="lineColor(n)" />
+        <g v-if="h !== null">
+          <text
+            :font-size="`${config.highlight.label.fontSize}px`"
+            :x="h.x"
+            :y="h.y + config.highlight.label.offsetY"
+            fill="var(--color-text-base)"
+            text-anchor="middle"
+          >
+            {{ drawableSeries[n].values[h.idx] }}
+          </text>
+          <circle :cx="h.x" :cy="h.y" :r="config.highlight.circleRadius" :fill="lineColor(n)" />
+        </g>
       </g>
     </g>
     <g :key="n" v-for="(l, n) in legend">
