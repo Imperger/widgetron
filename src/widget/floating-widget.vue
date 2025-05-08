@@ -15,6 +15,7 @@ import type { UISliderInput } from './input/ui-slider-input';
 import type { UITextInput } from './input/ui-text-input';
 import UiTextInput from './input/ui-text-input.vue';
 import type { WidgetModel } from './model/widget-model';
+import LineGraph from './views/line-graph.vue';
 import PieChart from './views/pie-chart.vue';
 import TableView from './views/table-view.vue';
 import { isTextView } from './views/text-view-guard';
@@ -300,6 +301,12 @@ onUnmounted(() => {
       <StringView v-else-if="isTextView(model)" :value="model" />
       <TableView v-else-if="model.type === 'table'" :rows="model.rows" />
       <PieChart v-else-if="model.type === 'piechart'" :segments="model.segments" />
+      <LineGraph
+        v-else-if="model.type === 'linegraph'"
+        :x-axis="model.xAxis"
+        :series="model.series"
+        :curve="model.curve"
+      />
     </div>
   </FloatingWindow>
 </template>

@@ -75,6 +75,13 @@ export class ExternalLibCache {
       );
 
       ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
+        'widget-model-line-graph.ts',
+        import.meta.glob('/src/widget/model/widget-model-line-graph.ts', { as: 'raw' }),
+        [],
+        ['remove-export'],
+      );
+
+      ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
         'widget-model.ts',
         import.meta.glob('/src/widget/model/widget-model.ts', { as: 'raw' }),
         [{ type: 'type', name: 'WidgetModel' }],
