@@ -198,7 +198,7 @@ const xAxisText = computed(() =>
     x: graphViewBox.x + n * xStep.value,
     y: graphViewBox.y + graphViewBox.height + config.xAxis.marginTop + config.xAxis.fontSize,
     text: xAxis[n],
-  })),
+  })).filter((x) => x.text.length > 0),
 );
 
 const onLocalStorageWrite = (key: string, value: string) => {
