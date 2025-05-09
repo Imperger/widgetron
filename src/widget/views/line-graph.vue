@@ -8,15 +8,9 @@ import { arrayMinMax } from '@/lib/array-min-max';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
 import { toSVGCoords } from '@/lib/to-svg-coords';
 import type { LocalStorageInterceptorListenerUnsubscriber } from '@/twitch/local-storage-interceptor';
+import GraphLegend, { type LegendLabel } from '@/ui/svg/graph-legend.vue';
 
 interface Point {
-  x: number;
-  y: number;
-}
-
-interface LegendLabel {
-  color: string;
-  label: string;
   x: number;
   y: number;
 }
@@ -50,7 +44,7 @@ const config = {
   yAxis: { marginRight: 3, fontSize: 4 },
   xAxis: { marginTop: 1, fontSize: 4 },
   highlight: { circleRadius: 1.5, label: { offsetY: -2, fontSize: 2 } },
-  legend: { position: { x: 96, y: 5 }, fontSize: 5, textOffset: 6 },
+  legend: { position: { x: 96, y: 5 }, fontSize: 5, textMarginLeft: 6 },
 };
 
 const colorPool = [
@@ -258,8 +252,6 @@ const legend = computed<LegendLabel[]>(() =>
   drawableSeries.value.map((x, n) => ({
     label: x.label,
     color: lineColor(n),
-    x: config.legend.position.x,
-    y: config.legend.position.y + (n * config.legend.fontSize + 1),
   })),
 );
 
@@ -338,17 +330,12 @@ onUnmounted(() => {
         </g>
       </g>
     </g>
-    <g :key="n" v-for="(l, n) in legend">
-      <rect :x="l.x" :y="l.y - config.legend.fontSize" :fill="l.color" width="5" height="5" />
-      <text
-        :font-size="`${config.legend.fontSize}px`"
-        :x="l.x + config.legend.textOffset"
-        :y="l.y"
-        fill="var(--color-text-base)"
-      >
-        {{ l.label }}
-      </text>
-    </g>
+    <GraphLegend
+      :position="config.legend.position"
+      :font-size="config.legend.fontSize"
+      :text-margin-left="config.legend.textMarginLeft"
+      :labels="legend"
+    />
   </svg>
   <div v-else>No data</div>
 </template>

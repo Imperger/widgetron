@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 
 import { pointOnCircle } from '@/lib/point-on-circle';
+import GraphLegend, { type LegendLabel } from '@/ui/svg/graph-legend.vue';
 
 interface SectorGeometricModel {
   fill: number;
@@ -17,13 +18,6 @@ interface SectorPresentationLabel {
 interface SectorPresentationModel extends SectorGeometricModel {
   color: string;
   label: SectorPresentationLabel;
-}
-
-interface LegendLabel {
-  color: string;
-  label: string;
-  x: number;
-  y: number;
 }
 
 export interface PieSegment {
@@ -43,7 +37,7 @@ const config = {
   legend: {
     position: { x: 100, y: 5 },
     fontSize: 5,
-    textOffset: 6,
+    textMarginLeft: 6,
   },
 };
 
@@ -131,8 +125,6 @@ const legend = computed<LegendLabel[]>(() =>
     : segmentPresentationModels.value.map((x, n) => ({
         label: segments[n].label,
         color: x.color,
-        x: config.legend.position.x,
-        y: config.legend.position.y + (n * config.legend.fontSize + 1),
       })),
 );
 
@@ -171,17 +163,12 @@ const nonEmptySegments = computed(() =>
     >
       {{ segment.label.value }}
     </text>
-    <g :key="n" v-for="(l, n) in legend">
-      <rect :x="l.x" :y="l.y - config.legend.fontSize" :fill="l.color" width="5" height="5" />
-      <text
-        :font-size="`${config.legend.fontSize}px`"
-        :x="l.x + config.legend.textOffset"
-        :y="l.y"
-        fill="var(--color-text-base)"
-      >
-        {{ l.label }}
-      </text>
-    </g>
+    <GraphLegend
+      :position="config.legend.position"
+      :font-size="config.legend.fontSize"
+      :text-margin-left="config.legend.textMarginLeft"
+      :labels="legend"
+    />
   </svg>
   <div v-else>No data</div>
 </template>
