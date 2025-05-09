@@ -182,6 +182,89 @@ async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
 }
 ```
 
+### Line graph
+
+The `LineGraph` view displays time-series data, making it ideal for visualizing changes over time. In this example, it tracks live viewer counts over a 10-minute window, sampling at regular intervals.
+
+```ts
+interface UIInput extends OnlyUIInputProperties {}
+
+interface SessionState {
+  currentChannelId: string;
+  lastCheckoutTime: number;
+  samplesPerWindow: number; // Total number of samples to keep in the graph
+  viewersOverTime: FixedQueue<number>;
+  samplingStartTime: number;
+}
+
+// Initialization logic run once when the UI is set up
+async function onUISetup(api: API): Promise<UIInput> {
+  api.state.currentChannelId = api.env.channel.id;
+  api.state.lastCheckoutTime = 0;
+  api.state.samplesPerWindow = 20;
+  api.state.viewersOverTime = FixedQueue.create(api.state.samplesPerWindow, 0);
+  api.state.samplingStartTime = Date.now();
+
+  return {};
+}
+
+async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
+  const timeWindowSeconds = 10 * 60; // Define the total time window in seconds (10 minutes)
+  const samplesPerWindow = api.state.samplesPerWindow;
+  const samplePeriod = (timeWindowSeconds * 1000) / samplesPerWindow; // Calculate how often to take samples (in ms)
+  const now = Date.now();
+
+  // If the channel has changed, reset tracking state
+  if (api.state.currentChannelId !== api.env.channel.id) {
+    api.state.viewersOverTime = FixedQueue.create(api.state.samplesPerWindow, 0);
+    api.state.currentChannelId = api.env.channel.id;
+    api.state.lastCheckoutTime = 0;
+    api.state.samplingStartTime = Date.now();
+  }
+
+  // Check if it's time to sample again
+  if (now - api.state.lastCheckoutTime > samplePeriod) {
+    if (api.env.channel.online) {
+      // If the channel is online, add current viewer count to the queue
+      api.state.viewersOverTime.enqueue(api.env.channel.viewers);
+    } else {
+      // If offline, record 0 viewers
+      api.state.viewersOverTime.enqueue(0);
+    }
+
+    api.state.lastCheckoutTime = now;
+  }
+
+  // If not enough samples yet, show a message instead of the graph
+  if (api.state.viewersOverTime.size < 2) {
+    const d = Math.floor((samplePeriod - (now - api.state.samplingStartTime)) / 1000);
+    return `Collecting data... Showing in ${d} seconds`;
+  }
+
+  const msToMinutes = (ms: number): number => Math.floor(ms / 1000 / 60);
+
+  // Generate X-axis labels: only label start (-Xm) and end (0), others remain blank
+  const xAxisLabels = (n: number): string => {
+    if (n === 0) {
+      return `-${msToMinutes(api.state.viewersOverTime.size * samplePeriod)}m`;
+    }
+
+    if (n == api.state.viewersOverTime.size - 1) {
+      return '0';
+    }
+
+    return '';
+  };
+
+  return {
+    type: 'linegraph',
+    curve: 'smooth',
+    xAxis: Array.from({ length: samplesPerWindow }, (_, n) => xAxisLabels(n)), // X-axis labels
+    series: [{ label: 'viewers', values: [...api.state.viewersOverTime] }], // Viewer counts over time
+  };
+}
+```
+
 ### Reading messages
 
 - Use `api.channelMessagesAfterLastTick()` or `api.allMessagesAfterLastTick()` to read messages in real time.
@@ -249,7 +332,7 @@ async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
 
 To send a message to the chat use `api.action.sendMessage(text: string)`.
 
-The following example reacts to the !hello command and replies by mentioning the user who triggered it.
+The following example reacts to the `!hello` command and replies by mentioning the user who triggered it.
 
 ```ts
 interface UIInput extends OnlyUIInputProperties {}
@@ -281,7 +364,7 @@ async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
 
 To delete specific message use `api.action.deleteMessage(messageId: string)`.
 
-The following example reacts to the !vanish command by deleting the command message itself, and—if found—also deletes the user's previous message sent within the last minute.
+The following example reacts to the `!vanish` command by deleting the command message itself, and—if found—also deletes the user's previous message sent within the last minute.
 
 ```ts
 interface UIInput extends OnlyUIInputProperties {}
