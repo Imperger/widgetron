@@ -17,6 +17,7 @@ import {
 } from './injection-tokens';
 import router from './router';
 import { SharedStateObserver } from './shared-state-observer';
+import { HermesInterceptor } from './twitch/hermes-interceptor';
 import { PubSubInterceptor } from './twitch/pub-sub-interceptor';
 import type { SharedState } from './widget/shared-state';
 
@@ -64,17 +65,21 @@ function createMountingPoint() {
 
   fetchInterceptor.subscribe(gqlInterceptor);
 
-  const websocketIntrceptor = new WebsocketInterceptor([
+  const websocketInterceptor = new WebsocketInterceptor([
     'wss://irc-ws.chat.twitch.tv:443',
     'wss://pubsub-edge.twitch.tv:443/v1',
+    'wss://hermes.twitch.tv',
   ]);
-  websocketIntrceptor.install();
+  websocketInterceptor.install();
 
   const chatInterceptor = new ChatInterceptor();
-  websocketIntrceptor.subscribe(chatInterceptor);
+  websocketInterceptor.subscribe(chatInterceptor);
 
   const pubSubInterceptor = new PubSubInterceptor();
-  websocketIntrceptor.subscribe(pubSubInterceptor);
+  websocketInterceptor.subscribe(pubSubInterceptor);
+
+  const hermesInterceptor = new HermesInterceptor();
+  websocketInterceptor.subscribe(hermesInterceptor);
 
   const localStorageInterceptor = new LocalStorageInterceptor();
   localStorageInterceptor.install();
@@ -83,7 +88,13 @@ function createMountingPoint() {
 
   const widgetSharedState: SharedState = { channel: null };
 
-  new SharedStateObserver(chatInterceptor, pubSubInterceptor, gqlInterceptor, widgetSharedState);
+  new SharedStateObserver(
+    chatInterceptor,
+    pubSubInterceptor,
+    hermesInterceptor,
+    gqlInterceptor,
+    widgetSharedState,
+  );
 
   await waitUntil(document, 'DOMContentLoaded');
 

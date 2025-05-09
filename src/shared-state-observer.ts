@@ -9,6 +9,7 @@ import {
 } from './twitch/gql/types/gql-response';
 import type { PlayerTrackingContextQueryLiveResponse } from './twitch/gql/types/player-tracking-context-query-response';
 import type { UseLiveResponse } from './twitch/gql/types/use-live-response';
+import type { ViewCountNotification, HermesInterceptor } from './twitch/hermes-interceptor';
 import type {
   BroadcastSettingsUpdateTopic,
   PubSubInterceptor,
@@ -28,6 +29,7 @@ export class SharedStateObserver {
   constructor(
     chatInterceptor: ChatInterceptor,
     pubSubInterceptor: PubSubInterceptor,
+    hermesInterceptor: HermesInterceptor,
     gqlInterceptor: GQLInterceptor,
     private readonly sharedState: SharedState,
   ) {
@@ -53,6 +55,10 @@ export class SharedStateObserver {
     pubSubInterceptor.subscribe<SubscriptionTopicWithSource<BroadcastSettingsUpdateTopic>>(
       'broadcast_settings_update',
       (x) => this.onBroadcastSettingsUpdate(x),
+    );
+
+    hermesInterceptor.subscribe<ViewCountNotification>('viewcount', (x) =>
+      this.onViewCountHermes(x),
     );
   }
 
@@ -145,6 +151,16 @@ export class SharedStateObserver {
     this.updateCache(x.channelId, { viewers: x.viewers });
 
     if (x.channelId === this.sharedState.channel?.roomId && this.sharedState.channel.stream) {
+      this.sharedState.channel.stream.viewers = x.viewers;
+    }
+
+    return false;
+  }
+
+  private onViewCountHermes(x: ViewCountNotification): boolean {
+    if (this.sharedState?.channel?.stream) {
+      this.updateCache(this.sharedState.channel.roomId, { viewers: x.viewers });
+
       this.sharedState.channel.stream.viewers = x.viewers;
     }
 

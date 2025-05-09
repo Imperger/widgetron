@@ -33,7 +33,11 @@ export class WebsocketInterceptor {
       construct: (target, args: [url: string | URL, protocols?: string | string[]]) => {
         const instance = new target(...args);
 
-        if (this.matchUrlList.some((x) => x === args[0])) {
+        if (
+          this.matchUrlList.some((x) =>
+            args[0] instanceof URL ? x === args[0].origin : args[0].startsWith(x),
+          )
+        ) {
           this.setupInterceptor(instance);
         }
 
