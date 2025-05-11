@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import MyWidgetsHolder from '@/widget/my-widgets-holder.vue';
+import WindowManager from '@/window-manager/window-manager.vue';
 </script>
 
 <template>
   <RouterView />
-  <MyWidgetsHolder />
+  <WindowManager />
 </template>

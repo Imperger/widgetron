@@ -13,13 +13,15 @@ import {
   localStorageInterceptorToken,
   twitchInteractorToken,
   widgetSharedStateToken,
-  widgetsToken,
+  windowManagerToken,
 } from './injection-tokens';
 import router from './router';
 import { SharedStateObserver } from './shared-state-observer';
 import { HermesInterceptor } from './twitch/hermes-interceptor';
 import { PubSubInterceptor } from './twitch/pub-sub-interceptor';
 import type { SharedState } from './widget/shared-state';
+import { WindowManagerExposed } from './window-manager/window-manager';
+import type { WindowInstanceType } from './window-manager/window-type';
 
 import { MountPointMaintainer } from '@/lib/mount-point-maintainer';
 import { waitUntil } from '@/lib/wait-until';
@@ -30,7 +32,6 @@ import { LocalStorageInterceptor } from '@/twitch/local-storage-interceptor';
 import { NavigationInterceptor } from '@/twitch/navigation-interceptor';
 import { TwitchInteractor } from '@/twitch/twitch-interactor';
 import { WebsocketInterceptor } from '@/twitch/websocket-interceptor';
-import type { WidgetInstance } from '@/widget/widget-instance';
 
 async function shrinkMessages(db: ExtensionDB): Promise<void> {
   const totalMessages = await db.messageCount();
@@ -106,7 +107,7 @@ function createMountingPoint() {
   app.provide(chatInterceptorToken, chatInterceptor);
   app.provide(bodyMountPointMaintainerToken, new MountPointMaintainer(document.body));
   app.provide(dbToken, extensionDB);
-  app.provide(widgetsToken, ref<WidgetInstance[]>([]));
+  app.provide(windowManagerToken, ref(new WindowManagerExposed<WindowInstanceType>()));
   app.provide(localStorageInterceptorToken, localStorageInterceptor);
   app.provide(twitchInteractorToken, twitchInteractor);
   app.provide(widgetSharedStateToken, widgetSharedState);

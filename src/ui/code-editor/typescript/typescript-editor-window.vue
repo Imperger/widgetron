@@ -17,7 +17,6 @@ import MyWidgetLabelDialog from '@/widget/my-widget-label-dialog.vue';
 
 export interface TypescriptEditorWindowProps {
   label?: string;
-  title?: string;
   placeholder?: string;
   extraLibs?: ExtraLib[];
   validators?: Validator[];
@@ -28,6 +27,7 @@ export interface TypescriptEditorWindowEvents {
   (e: 'close'): void;
   (e: 'save', label: string): void;
   (e: 'preview'): void;
+  (e: 'setFocus'): void;
 }
 
 const left = defineModel('left', { required: false, default: 100 });
@@ -47,8 +47,6 @@ let disposerList: monaco.IDisposable[] = [];
 
 const validationErrors = ref<string[]>([]);
 const errorMarkers = ref<string[]>([]);
-const windowHasFocus = ref(false);
-const editorHasFocus = ref(false);
 
 const setWidgetLabelDialogShown = ref(false);
 
@@ -84,10 +82,9 @@ const validator = (tree: typescript.SourceFile, resolve: ValidationResultResolve
 const onInitialized = (instance: monaco.editor.IStandaloneCodeEditor) => {
   editor = instance;
 
-  const onFocusDisposer = editor.onDidFocusEditorWidget(() => (editorHasFocus.value = true));
-  const onBlurDisposer = editor.onDidBlurEditorWidget(() => (editorHasFocus.value = false));
+  const onFocusDisposer = editor.onDidFocusEditorWidget(() => emit('setFocus'));
 
-  disposerList = [onFocusDisposer, onBlurDisposer];
+  disposerList = [onFocusDisposer];
 
   emit('initialized', instance);
 };
@@ -112,27 +109,19 @@ const onSetWidgetLabelOk = async (label: string) => {
   emit('save', label);
 };
 
-const onFocus = () => (windowHasFocus.value = true);
-const onBlur = () => (windowHasFocus.value = false);
-
-const hasFocus = computed(() => windowHasFocus.value || editorHasFocus.value);
-
 onUnmounted(() => disposerList.forEach((x) => x.dispose()));
 </script>
 
 <template>
   <FloatingWindow
-    tabindex="0"
-    :title="title"
+    :title="label"
     :resizable="true"
     :save-enabled="saveEnabled"
     :preview-enabled="saveEnabled"
     v-model:left="left"
     v-model:top="top"
     @close="onClose"
-    @focus="onFocus"
-    @blur="onBlur"
-    :class="{ 'foreground-window': hasFocus }"
+    @setFocus="emit('setFocus')"
     style="background-color: white"
   >
     <template v-slot:title-bar>
@@ -168,9 +157,5 @@ onUnmounted(() => disposerList.forEach((x) => x.dispose()));
 .error-log {
   height: 84px;
   overflow: auto;
-}
-
-.foreground-window {
-  z-index: 1001;
 }
 </style>

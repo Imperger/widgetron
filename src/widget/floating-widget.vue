@@ -44,6 +44,7 @@ export interface WidgetProps {
 
 export interface FloatingWidgetEvents {
   (e: 'close'): void;
+  (e: 'setFocus'): void;
 }
 
 export type UIInputComponentWithType = UIInputComponent & { type: string };
@@ -270,6 +271,7 @@ onUnmounted(() => {
     :min-width="100"
     :min-height="100"
     @close="emit('close')"
+    @setFocus="emit('setFocus')"
     class="floating-widget"
   >
     <div class="ui-input">

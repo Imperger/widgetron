@@ -2,12 +2,15 @@
 import * as monaco from 'monaco-editor';
 import { inject, onMounted, onUnmounted, ref } from 'vue';
 
-import { bodyMountPointMaintainerToken, chatInterceptorToken } from '@/injection-tokens';
+import {
+  bodyMountPointMaintainerToken,
+  chatInterceptorToken,
+  windowManagerToken,
+} from '@/injection-tokens';
 import { CssInjector } from '@/lib/css-injector';
 import type { MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 import { useSettingsStore } from '@/stores/settings-store';
 import type { ClearChatCommand, ClearMsgCommand } from '@/twitch/chat-interceptor';
-import CssEditorWindow from '@/ui/code-editor/css/css-editor-window.vue';
 import { parsingErorValidator as parsingEror } from '@/ui/code-editor/css/validators/parsing-error-validator';
 import { requireClassValidator as requireClass } from '@/ui/code-editor/css/validators/require-class-validator';
 import GearIcon from '@/ui/icons/gear-icon.vue';
@@ -15,12 +18,15 @@ import TwitchToggle from '@/ui/twitch/twitch-toggle.vue';
 
 const chatInterceptor = inject(chatInterceptorToken)!;
 const mountPointMaintainer = inject(bodyMountPointMaintainerToken)!;
+const windowManager = inject(windowManagerToken)!;
+
 const settingsStore = useSettingsStore();
 const dontHideDeletedMessagedMountPoint = ref<HTMLElement | null>(null);
 let mountPointWatchReleaser: MountPointWatchReleaser | null = null;
 const css = new CssInjector('deleted-messages-stylesheet');
 let cssPatcherEditor: monaco.editor.IStandaloneCodeEditor | null = null;
-const isCssPatcherShown = ref(false);
+
+let cssPatherKey = -1;
 
 onMounted(() => {
   mountPointWatchReleaser = mountPointMaintainer.watch(
@@ -117,8 +123,27 @@ const onSave = () => {
   settingsStore.get.deletedMessageStyle = stylesheetContent;
 };
 
-const openCssPatcher = () => (isCssPatcherShown.value = true);
-const closeCssPatcher = () => (isCssPatcherShown.value = false);
+const openCssPatcher = () => {
+  cssPatherKey = windowManager.value.spawn({
+    type: 'css_editor_window',
+    title: 'Deleted message style',
+    validators: [
+      parsingEror(),
+      requireClass('deleted-message-text', 'deleted-message-displayname'),
+    ],
+    onInitialized,
+    onSave,
+    onClose: closeCssPatcher,
+  });
+};
+
+const closeCssPatcher = () => {
+  if (cssPatherKey !== -1) {
+    windowManager.value.close(cssPatherKey);
+
+    cssPatherKey = -1;
+  }
+};
 
 onUnmounted(() => {
   clearChatUnsub?.();
@@ -138,17 +163,6 @@ onUnmounted(() => {
       />
     </div>
   </Teleport>
-  <CssEditorWindow
-    v-if="isCssPatcherShown"
-    title="Deleted message style"
-    :validators="[
-      parsingEror(),
-      requireClass('deleted-message-text', 'deleted-message-displayname'),
-    ]"
-    @initialized="onInitialized"
-    @save="onSave"
-    @close="closeCssPatcher"
-  />
 </template>
 
 <style scoped>

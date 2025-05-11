@@ -1,19 +1,18 @@
 <script setup lang="ts">
 import * as monaco from 'monaco-editor';
-import { computed, inject, markRaw, onMounted, onUnmounted, ref } from 'vue';
+import { computed, inject, onMounted, onUnmounted, ref } from 'vue';
 
 import type { WidgetInfo } from '@/extension-db';
 import {
   bodyMountPointMaintainerToken,
   dbToken,
   widgetSharedStateToken,
-  widgetsToken,
+  windowManagerToken,
 } from '@/injection-tokens';
 import { cssVar } from '@/lib/css-var';
 import type { MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 import { ExternalLibCache } from '@/lib/typescript/external-lib-cache';
-import TypescriptEditorWindow from '@/ui/code-editor/typescript/typescript-editor-window.vue';
-import type { ExtraLib } from '@/ui/code-editor/typescript/typescript-editor.vue';
+import type { TypescriptEditorWindowInstance } from '@/ui/code-editor/typescript/typescript-editor-window-instance';
 import { requireFunctionValidator } from '@/ui/code-editor/typescript/validators/require-function-validator';
 import { requireInterfaceValidator } from '@/ui/code-editor/typescript/validators/require-interface-validator';
 import DeleteIcon from '@/ui/icons/delete-icon.vue';
@@ -22,29 +21,23 @@ import ToolsIcon from '@/ui/icons/tools-icon.vue';
 import TwitchMenuItemDivider from '@/ui/twitch/twitch-menu/twitch-menu-item-divider.vue';
 import TwitchMenuItem from '@/ui/twitch/twitch-menu/twitch-menu-item.vue';
 import TwitchMenu from '@/ui/twitch/twitch-menu/twitch-menu.vue';
-import FloatingWidget from '@/widget/floating-widget.vue';
+import type { WidgetInstance } from '@/widget/widget-instance';
 
 interface EditorInstance {
+  key: number;
   id?: number;
   label?: string;
   instance: monaco.editor.IStandaloneCodeEditor | null;
-  placeholder: string;
-  extraLibs?: ExtraLib[];
-}
-
-interface WidgetPreview {
-  updatePeriod: number;
-  sourceCode: string;
 }
 
 const db = inject(dbToken)!;
 const mountPointMaintainer = inject(bodyMountPointMaintainerToken)!;
-const widgets = inject(widgetsToken)!;
+const windowManager = inject(windowManagerToken)!;
 
 const chatEnhancerWidget = ref<HTMLElement | null>(null);
 
-const widgetEditor = ref<EditorInstance | null>(null);
-const widgetPreview = ref<WidgetPreview | null>(null);
+let widgetEditorInstance: EditorInstance | null = null;
+let widgetPreviewKey = -1;
 
 const widgetList = ref<WidgetInfo[]>([]);
 
@@ -87,11 +80,16 @@ const spawnWidgetEditor = async (id?: number) => {
     return;
   }
 
-  widgetEditor.value = {
+  widgetEditorInstance = {
+    key: -1,
     ...(id !== undefined && { id }),
     instance: null,
     ...(editedWidget?.label && { label: editedWidget.label }),
-    placeholder: editedWidget?.content ?? placeholder,
+  };
+
+  widgetEditorInstance.key = windowManager.value.spawn({
+    type: 'typescript_editor_window',
+    ...(editedWidget?.label && { label: editedWidget.label }),
     extraLibs: [
       {
         content: await ExternalLibCache.dexie(),
@@ -102,42 +100,76 @@ const spawnWidgetEditor = async (id?: number) => {
         filePath: `widget-types.d.ts`,
       },
     ],
-  };
+    placeholder: editedWidget?.content ?? placeholder,
+    validators: [
+      requireInterfaceValidator('SessionState'),
+      requireFunctionValidator('onUISetup', ['API'], 'Promise<UIInput>'),
+      requireFunctionValidator('onUpdate', ['UIInput', 'API'], 'Promise<WidgetModel>'),
+    ],
+    onInitialized,
+    onSave,
+    onExecute,
+    onClose: closeWidgetEditor,
+  });
 };
 
 const onInitialized = (instance: monaco.editor.IStandaloneCodeEditor) => {
-  widgetEditor.value!.instance = markRaw(instance);
+  widgetEditorInstance!.instance = instance;
 };
 
 const closeWidgetEditor = () => {
-  widgetEditor.value = null;
-  widgetPreview.value = null;
+  windowManager.value.close(widgetEditorInstance!.key);
+  widgetEditorInstance = null;
+
+  windowManager.value.close(widgetPreviewKey);
+  widgetPreviewKey = -1;
 };
 
 const closeWidgetPreview = () => {
-  widgetPreview.value = null;
+  widgetPreviewKey = -1;
 };
 
 const onExecute = async () => {
-  widgetPreview.value = {
-    updatePeriod: 1000,
-    sourceCode: widgetEditor.value!.instance!.getValue(),
-  };
+  if (widgetPreviewKey === -1) {
+    widgetPreviewKey = windowManager.value.spawn({
+      type: 'widget_instance',
+      updatePeriod: 1000,
+      sourceCode: widgetEditorInstance!.instance!.getValue(),
+      onClose: closeWidgetPreview,
+    });
+  } else {
+    const preview = windowManager.value.find<WidgetInstance>(widgetPreviewKey);
+
+    if (preview === null) {
+      return;
+    }
+
+    preview.sourceCode = widgetEditorInstance!.instance!.getValue();
+  }
 };
 
 const onSave = async (label: string) => {
-  widgetEditor.value!.label = label;
+  widgetEditorInstance!.label = label;
+
+  if (widgetEditorInstance) {
+    const window = windowManager.value.find<TypescriptEditorWindowInstance>(
+      widgetEditorInstance.key,
+    );
+    if (window !== null) {
+      window.label = label;
+    }
+  }
 
   const id = await db.saveWidget(
     label,
-    widgetEditor.value!.instance!.getValue(),
-    widgetEditor.value?.id,
+    widgetEditorInstance!.instance!.getValue(),
+    widgetEditorInstance?.id,
   );
 
-  if (widgetEditor.value?.id === undefined) {
+  if (widgetEditorInstance?.id === undefined) {
     widgetList.value.push({ id, label });
 
-    widgetEditor.value!.id = id;
+    widgetEditorInstance!.id = id;
   } else {
     const editedWidget = widgetList.value.find((x) => x.id === id);
 
@@ -147,15 +179,12 @@ const onSave = async (label: string) => {
   }
 };
 
-let nextWidgetId = 0;
-
 const spawnWidget = async (id: number) => {
   const widget = await db.findWidget(id);
 
   if (widget !== null) {
-    widgets.value.push({
-      key: nextWidgetId++,
-      id: widget.id,
+    windowManager.value.spawn({
+      type: 'widget_instance',
       label: widget.label,
       sourceCode: widget.content,
       updatePeriod: 1000,
@@ -173,7 +202,7 @@ const deleteWidget = async (id: number) => {
   }
 };
 
-const isWidgetEditorOpened = computed(() => widgetEditor.value !== null);
+const isWidgetEditorOpened = computed(() => widgetEditorInstance !== null);
 
 onUnmounted(() => {
   mountPointWatchReleaser?.();
@@ -205,27 +234,6 @@ onUnmounted(() => {
       ></TwitchMenu>
     </button>
   </Teleport>
-  <TypescriptEditorWindow
-    v-if="widgetEditor"
-    :label="widgetEditor.label"
-    :extraLibs="widgetEditor.extraLibs"
-    :placeholder="widgetEditor.placeholder"
-    :validators="[
-      requireInterfaceValidator('SessionState'),
-      requireFunctionValidator('onUISetup', ['API'], 'Promise<UIInput>'),
-      requireFunctionValidator('onUpdate', ['UIInput', 'API'], 'Promise<WidgetModel>'),
-    ]"
-    @initialized="(x) => onInitialized(x)"
-    @save="onSave"
-    @preview="onExecute()"
-    @close="() => closeWidgetEditor()"
-  />
-  <FloatingWidget
-    v-if="widgetPreview"
-    :update-period="widgetPreview.updatePeriod"
-    :source-code="widgetPreview.sourceCode"
-    @close="closeWidgetPreview()"
-  />
 </template>
 
 <style scoped>

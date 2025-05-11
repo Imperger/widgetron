@@ -17,6 +17,7 @@ export interface FloatingWindowProps {
 
 export interface FloatingWindowEvents {
   (e: 'close'): void;
+  (e: 'setFocus'): void;
 }
 
 const {
@@ -103,7 +104,13 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="componentRef" class="floating-window" :style="style">
+  <div
+    ref="componentRef"
+    tabindex="0"
+    class="floating-window"
+    @focus="emit('setFocus')"
+    :style="style"
+  >
     <div @mousedown="onTitleDragStart" class="title-bar">
       <slot name="title-bar"></slot>
       <div class="title-bar-caption">{{ title }}</div>

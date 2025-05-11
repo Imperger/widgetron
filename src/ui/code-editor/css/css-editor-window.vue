@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CssStylesheetAST } from '@adobe/css-tools';
 import * as monaco from 'monaco-editor';
-import { computed, ref } from 'vue';
+import { computed, onUnmounted, ref } from 'vue';
 
 import CssEditor, { type ValidationResultResolver } from './css-editor.vue';
 import { mergeValidators, type Validator } from './validators/merge-validators';
@@ -20,6 +20,7 @@ export interface CssEditorWindowEvents {
   (e: 'initialized', instance: monaco.editor.IStandaloneCodeEditor): void;
   (e: 'close'): void;
   (e: 'save'): void;
+  (e: 'setFocus'): void;
 }
 
 const left = defineModel('left', { required: false, default: 100 });
@@ -33,10 +34,18 @@ const errors = ref<string[]>([]);
 
 const isApplied = ref(false);
 
+let onFocusDisposer: monaco.IDisposable | null = null;
+
 const isAppliedDuration = 800;
 let isAppliedFadeTimer = -1;
 
 const saveEnabled = computed(() => errors.value.length === 0);
+
+const onInitialized = (instance: monaco.editor.IStandaloneCodeEditor) => {
+  onFocusDisposer = instance.onDidFocusEditorWidget(() => emit('setFocus'));
+
+  emit('initialized', instance);
+};
 
 const onSave = () => {
   isApplied.value = true;
@@ -51,6 +60,8 @@ const saveIconColor = computed(() => (saveEnabled.value ? '#ffffff' : '#e877e8')
 
 const validator = (tree: CssStylesheetAST, resolve: ValidationResultResolver) =>
   mergeValidators(errors, ...validators)(tree, resolve);
+
+onUnmounted(() => onFocusDisposer?.dispose());
 </script>
 
 <template>
@@ -61,6 +72,7 @@ const validator = (tree: CssStylesheetAST, resolve: ValidationResultResolver) =>
     v-model:left="left"
     v-model:top="top"
     @close="() => emit('close')"
+    @setFocus="emit('setFocus')"
     style="background-color: white"
   >
     <template v-slot:title-bar>
@@ -68,11 +80,7 @@ const validator = (tree: CssStylesheetAST, resolve: ValidationResultResolver) =>
         <TickIcon :color="saveIconColor" />
       </button>
     </template>
-    <CssEditor
-      :placeholder="placeholder"
-      @initialized="(x) => emit('initialized', x)"
-      @validation="validator"
-    />
+    <CssEditor :placeholder="placeholder" @initialized="onInitialized" @validation="validator" />
     <ErrorLog :logs="errors" />
     <div v-if="isApplied" class="floating-window-applied-popup"><p>Applied</p></div>
   </FloatingWindow>
