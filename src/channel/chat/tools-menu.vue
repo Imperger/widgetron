@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import * as monaco from 'monaco-editor';
-import { computed, inject, onMounted, onUnmounted, ref } from 'vue';
+import { computed, inject, onMounted, onUnmounted, ref, shallowRef } from 'vue';
 
 import type { WidgetInfo } from '@/extension-db';
 import {
@@ -36,7 +36,7 @@ const windowManager = inject(windowManagerToken)!;
 
 const chatEnhancerWidget = ref<HTMLElement | null>(null);
 
-let widgetEditorInstance: EditorInstance | null = null;
+const widgetEditorInstance = shallowRef<EditorInstance | null>(null);
 let widgetPreviewKey = -1;
 
 const widgetList = ref<WidgetInfo[]>([]);
@@ -80,14 +80,14 @@ const spawnWidgetEditor = async (id?: number) => {
     return;
   }
 
-  widgetEditorInstance = {
+  widgetEditorInstance.value = {
     key: -1,
     ...(id !== undefined && { id }),
     instance: null,
     ...(editedWidget?.label && { label: editedWidget.label }),
   };
 
-  widgetEditorInstance.key = windowManager.value.spawn({
+  widgetEditorInstance.value.key = windowManager.value.spawn({
     type: 'typescript_editor_window',
     ...(editedWidget?.label && { label: editedWidget.label }),
     extraLibs: [
@@ -114,12 +114,12 @@ const spawnWidgetEditor = async (id?: number) => {
 };
 
 const onInitialized = (instance: monaco.editor.IStandaloneCodeEditor) => {
-  widgetEditorInstance!.instance = instance;
+  widgetEditorInstance.value!.instance = instance;
 };
 
 const closeWidgetEditor = () => {
-  windowManager.value.close(widgetEditorInstance!.key);
-  widgetEditorInstance = null;
+  windowManager.value.close(widgetEditorInstance.value!.key);
+  widgetEditorInstance.value = null;
 
   windowManager.value.close(widgetPreviewKey);
   widgetPreviewKey = -1;
@@ -134,7 +134,7 @@ const onExecute = async () => {
     widgetPreviewKey = windowManager.value.spawn({
       type: 'widget_instance',
       updatePeriod: 1000,
-      sourceCode: widgetEditorInstance!.instance!.getValue(),
+      sourceCode: widgetEditorInstance.value!.instance!.getValue(),
       onClose: closeWidgetPreview,
     });
   } else {
@@ -144,16 +144,16 @@ const onExecute = async () => {
       return;
     }
 
-    preview.sourceCode = widgetEditorInstance!.instance!.getValue();
+    preview.sourceCode = widgetEditorInstance.value!.instance!.getValue();
   }
 };
 
 const onSave = async (label: string) => {
-  widgetEditorInstance!.label = label;
+  widgetEditorInstance.value!.label = label;
 
-  if (widgetEditorInstance) {
+  if (widgetEditorInstance.value) {
     const window = windowManager.value.find<TypescriptEditorWindowInstance>(
-      widgetEditorInstance.key,
+      widgetEditorInstance.value.key,
     );
     if (window !== null) {
       window.label = label;
@@ -162,14 +162,14 @@ const onSave = async (label: string) => {
 
   const id = await db.saveWidget(
     label,
-    widgetEditorInstance!.instance!.getValue(),
-    widgetEditorInstance?.id,
+    widgetEditorInstance.value!.instance!.getValue(),
+    widgetEditorInstance.value!.id,
   );
 
-  if (widgetEditorInstance?.id === undefined) {
+  if (widgetEditorInstance.value?.id === undefined) {
     widgetList.value.push({ id, label });
 
-    widgetEditorInstance!.id = id;
+    widgetEditorInstance.value!.id = id;
   } else {
     const editedWidget = widgetList.value.find((x) => x.id === id);
 
@@ -202,7 +202,7 @@ const deleteWidget = async (id: number) => {
   }
 };
 
-const isWidgetEditorOpened = computed(() => widgetEditorInstance !== null);
+const isWidgetEditorOpened = computed(() => widgetEditorInstance.value !== null);
 
 onUnmounted(() => {
   mountPointWatchReleaser?.();
@@ -226,9 +226,17 @@ onUnmounted(() => {
           class="widget-menu-item"
           ><span class="widget-menu-label">{{ widget.label }}</span>
           <div class="widget-menu-item-action">
-            <button @click.stop="spawnWidgetEditor(widget.id)" class="widget-menu-btn">
+            <button
+              @click.stop="spawnWidgetEditor(widget.id)"
+              :disabled="isWidgetEditorOpened"
+              class="widget-menu-btn"
+            >
               <EditIcon :color="cssVar('color-border-toggle-checked') ?? undefined" /></button
-            ><button @click.stop="deleteWidget(widget.id)" class="widget-menu-btn">
+            ><button
+              @click.stop="deleteWidget(widget.id)"
+              :disabled="widgetEditorInstance?.id === widget.id"
+              class="widget-menu-btn"
+            >
               <DeleteIcon :color="cssVar('color-border-toggle-checked') ?? undefined" />
             </button></div></TwitchMenuItem
       ></TwitchMenu>
@@ -269,5 +277,9 @@ onUnmounted(() => {
 
 .widget-menu-btn {
   display: flex;
+}
+
+.widget-menu-btn:disabled {
+  filter: grayscale(100%);
 }
 </style>
