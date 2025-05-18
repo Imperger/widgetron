@@ -15,6 +15,7 @@ import type { UseLiveResponse } from './gql/types/use-live-response';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
 import type {
   FetchInterceptor,
+  FetchInterceptorListener,
   FetchInterceptorListenerUnsubscriber,
   FetchInterceptorRequest,
 } from '@/twitch/fetch-interceptor';
@@ -22,7 +23,7 @@ import type { GQLInterceptor } from '@/twitch/gql/gql-interceptor';
 
 type GQLHeaders = Record<(typeof TwitchInteractor.requiredHeaders)[number], string>;
 
-export class TwitchInteractor {
+export class TwitchInteractor implements FetchInterceptorListener {
   static readonly requiredHeaders = [
     'Authorization',
     'Client-Id',
@@ -167,7 +168,7 @@ export class TwitchInteractor {
     return true;
   }
 
-  async onRequest(req: FetchInterceptorRequest, _res: Response): Promise<boolean> {
+  async onResponse(req: FetchInterceptorRequest, _res: Response): Promise<boolean> {
     if (!req.input.toString().startsWith('https://gql.twitch.tv/gql')) {
       return false;
     }

@@ -1,54 +1,55 @@
 import type { Action } from './api/action';
 import type { API } from './api/api';
-import type { OnlyUIInputProperties } from './input/only-ui-input-properties';
 import { MessagesAfterLastTick } from './messages-after-last-tick';
-import type { WidgetModel } from './model/widget-model';
 
 import AppDb from '@/db/app-db';
 import { autovivify, isUndefined } from '@/lib/autovivify';
 import { FixedQueue } from '@/lib/fixed-queue';
-import { reinterpret_cast } from '@/lib/reinterpret-cast';
 
-export interface UploadCodeMessage {
+interface UploadCodeMessage {
   type: 'upload';
   requestId: number;
   sourceCode: string;
   async: boolean;
+  name: string;
   parameters: string[];
 }
 
-export interface ExecuteonUISetupMessage {
-  type: 'execute';
+interface UnloadCodeMessage {
+  type: 'unload';
   requestId: number;
-  args: ['onUISetup', API];
+  name: string;
 }
 
-export interface ExecuteOnUpdateMessage {
+type FunctionName = string;
+
+interface ExecuteMessage {
   type: 'execute';
   requestId: number;
-  args: ['onUpdate', OnlyUIInputProperties, API];
+  args: [FunctionName, ...unknown[]];
 }
 
-export type IncomingMessage = UploadCodeMessage | ExecuteonUISetupMessage | ExecuteOnUpdateMessage;
-
-export type UISetupFunction = (
-  api: API,
-  ...extra: unknown[]
-) => OnlyUIInputProperties | Promise<OnlyUIInputProperties>;
-
-export type UpdateFunction = (
-  input: OnlyUIInputProperties,
-  api: API,
-  ...extra: unknown[]
-) => WidgetModel | Promise<WidgetModel>;
+type IncomingMessage = UploadCodeMessage | UnloadCodeMessage | ExecuteMessage;
 
 interface ExtraType {
   type: unknown;
   name: string;
 }
 
+type Callable = (...args: unknown[]) => unknown;
+
+interface FunctionRecord {
+  name: string;
+  parameters: string[];
+  fn: Callable;
+}
+
+type ArgumentName = string;
+type Argument<T = unknown> = [ArgumentName, T];
+
 const db = new AppDb();
-let uploadedFunction: UISetupFunction | UpdateFunction | null = null;
+
+const functionRegistry: FunctionRecord[] = [];
 
 const emitAction = (action: 'sendMessage' | 'deleteMessage' | 'banUser', ...args: unknown[]) =>
   self.postMessage({ action, args });
@@ -65,16 +66,26 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
     case 'upload':
       uploadSourceCode(
         e.data.async,
+        e.data.name,
         [...e.data.parameters, ...extraTypes.map((x) => x.name)],
         e.data.sourceCode,
       );
 
       self.postMessage({ requestId: e.data.requestId, return: true });
       break;
+    case 'unload':
+      self.postMessage({ requestId: e.data.requestId, return: unloadSourceCode(e.data.name) });
+      break;
     case 'execute':
       const AsyncFunction = async function () {}.constructor;
+      const [fnName] = e.data.args;
 
-      const [type, arg0] = e.data.args;
+      const fnRecord = functionRegistry.find((x) => x.name === fnName);
+
+      if (fnRecord === undefined) {
+        throw new Error(`Failed to execute unknown function '${fnName}'`);
+      }
+
       const action: Action = {
         sendMessage: (text: string) => emitAction('sendMessage', text),
         deleteMessage: (messageId: string) => emitAction('deleteMessage', messageId),
@@ -82,7 +93,10 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
           emitAction('banUser', bannedUserLogin, expiresIn, reason),
       };
 
-      const outerAPI = APIFromArgs(e.data);
+      const incomingArgs = incomingArguments(fnRecord.parameters, e.data);
+
+      const outerAPIArgument = findArgument<Pick<API, 'env'>>('api', incomingArgs)!;
+      const outerAPI = outerAPIArgument[1];
 
       const apiMethods = {
         allMessagesAfterLastTick: () => allMessagesAfterLastTick.call(() => true),
@@ -101,37 +115,33 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
         state: sessionState,
       };
 
-      const extraTypesArgs = extraTypes.map((x) => x.type);
+      outerAPIArgument[1] = api;
 
-      const fn =
-        type === 'onUISetup'
-          ? reinterpret_cast<UISetupFunction>(uploadedFunction)!.bind(null, api, ...extraTypesArgs)
-          : reinterpret_cast<UpdateFunction>(uploadedFunction)!.bind(
-              null,
-              arg0,
-              api,
-              ...extraTypesArgs,
-            );
+      const extraTypesArgs = extraTypes.map((x) => x.type);
+      const knownArgs = [...incomingArgs, ...extraTypes.map((x) => [x.name, x.type] as Argument)];
+      const fnArgs = matchArguments(fnRecord, knownArgs);
+
+      const fn = fnRecord.fn.bind(null, ...fnArgs, ...extraTypesArgs);
 
       allMessagesAfterLastTick.enterTick();
       channelMessagesAfterLastTick.enterTick();
 
-      let result: OnlyUIInputProperties | WidgetModel | null = null;
-      if (uploadedFunction instanceof AsyncFunction) {
+      let result: unknown = null;
+      if (fn instanceof AsyncFunction) {
         result = await fn();
-      } else if (uploadedFunction instanceof Function) {
-        result = reinterpret_cast<OnlyUIInputProperties | WidgetModel>(fn());
+      } else if (fn instanceof Function) {
+        result = fn();
       }
 
-      if (type === 'onUISetup') {
+      if (fnName === 'onUpdate') {
+        self.postMessage({
+          requestId: e.data.requestId,
+          return: { model: result, input: findArgument('input', knownArgs)![1] },
+        });
+      } else {
         self.postMessage({
           requestId: e.data.requestId,
           return: result,
-        });
-      } else if (type === 'onUpdate') {
-        self.postMessage({
-          requestId: e.data.requestId,
-          return: { model: result, input: arg0 },
         });
       }
 
@@ -142,17 +152,51 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
   }
 };
 
-function uploadSourceCode(async: boolean, parameters: string[], sourceCode: string): void {
+function uploadSourceCode(
+  async: boolean,
+  name: string,
+  parameters: string[],
+  sourceCode: string,
+): void {
   const createFn = async ? async function () {}.constructor : Function;
 
-  uploadedFunction = createFn(...parameters, sourceCode) as UpdateFunction;
+  const record = { name, parameters, fn: createFn(...parameters, sourceCode) };
+  const fnIdx = functionRegistry.findIndex((x) => x.name === name);
+
+  if (fnIdx === -1) {
+    functionRegistry.push(record);
+  } else {
+    functionRegistry[fnIdx] = record;
+  }
 }
 
-function APIFromArgs(msg: ExecuteonUISetupMessage | ExecuteOnUpdateMessage): API {
-  switch (msg.args[0]) {
-    case 'onUISetup':
-      return msg.args[1];
-    case 'onUpdate':
-      return msg.args[2];
+function unloadSourceCode(name: string): boolean {
+  const unloadIdx = functionRegistry.findIndex((x) => x.name === name);
+  if (unloadIdx !== -1) {
+    functionRegistry.splice(unloadIdx, 1);
+
+    return true;
   }
+
+  return false;
+}
+
+function matchArguments(fnRecord: FunctionRecord, argsRegistry: Argument[]): unknown[] {
+  return fnRecord.parameters.map((p) => {
+    const arg = argsRegistry.find((a) => a[0] === p);
+
+    if (arg === undefined) {
+      throw new Error(`Failed to substitute value for parameter '${p}'`);
+    }
+
+    return arg[1];
+  });
+}
+
+function incomingArguments(parameters: string[], msg: ExecuteMessage): Argument[] {
+  return msg.args.slice(1).map((a, n) => [parameters[n], a]);
+}
+
+function findArgument<T = unknown>(name: string, knownArguments: Argument[]): Argument<T> | null {
+  return (knownArguments.find((x) => x[0] === name) as Argument<T>) ?? null;
 }

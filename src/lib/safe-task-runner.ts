@@ -5,11 +5,17 @@ interface WorkerConstructor {
 }
 
 type UploadResolver = (uploaded: boolean) => void;
+type UnloadResolver = (uploaded: boolean) => void;
 type ExecuteResolver = (result: unknown) => void;
 
 interface PendingUploadAction {
   type: 'upload';
   resolver: UploadResolver;
+}
+
+interface PendingUnloadAction {
+  type: 'unload';
+  resolver: UnloadResolver;
 }
 
 interface PendingExecuteAction {
@@ -23,7 +29,8 @@ interface ActionResponseId {
   requestId?: number;
 }
 
-type PendingAction = ActionResponseId & (PendingUploadAction | PendingExecuteAction);
+type PendingAction = ActionResponseId &
+  (PendingUploadAction | PendingUnloadAction | PendingExecuteAction);
 
 export type ActionResponse<T> = ActionResponseId & (T extends void ? object : { return: T });
 
@@ -33,13 +40,17 @@ export type ExternalMessageListener<T> = (data: T) => void;
 
 export type ExternalMessageListenerUnsubscriber = () => void;
 
+interface ExecutionTarget<T extends unknown[]> {
+  name: string;
+  args: T;
+}
+
 /**
  * Wrapper for a worker, that maintain worker in working state in case of infinite loops
  */
 export class SafeTaskRunner<T extends WorkerConstructor> {
   private nextRequestId = 0;
   private instance!: Worker;
-  public timeout = 1000;
   private pendingActions: PendingAction[] = [];
   private readonly externalMessageListeners: ExternalMessageListener<unknown>[] = [];
 
@@ -47,17 +58,35 @@ export class SafeTaskRunner<T extends WorkerConstructor> {
     this.setup();
   }
 
-  async upload(async: boolean, parameters: string[], sourceCode: string): Promise<boolean> {
+  async upload(
+    async: boolean,
+    name: string,
+    parameters: string[],
+    sourceCode: string,
+  ): Promise<boolean> {
     return new Promise<boolean>((resolver) => {
       const requestId = this.requestId();
 
       this.pendingActions.push({ requestId, type: 'upload', resolver });
 
-      this.instance.postMessage({ requestId, type: 'upload', async, parameters, sourceCode });
+      this.instance.postMessage({ requestId, type: 'upload', async, name, parameters, sourceCode });
     });
   }
 
-  async execute<T extends unknown[]>(...args: T): Promise<unknown> {
+  async unload(name: string): Promise<boolean> {
+    return new Promise<boolean>((resolver) => {
+      const requestId = this.requestId();
+
+      this.pendingActions.push({ requestId, type: 'unload', resolver });
+
+      this.instance.postMessage({ requestId, type: 'unload', name });
+    });
+  }
+
+  async execute<T extends unknown[]>(
+    { name, args }: ExecutionTarget<T>,
+    timeout = 1000,
+  ): Promise<unknown> {
     return new Promise<unknown>((resolver, rejector) => {
       const requestId = this.requestId();
 
@@ -66,10 +95,10 @@ export class SafeTaskRunner<T extends WorkerConstructor> {
         type: 'execute',
         resolver,
         rejector,
-        timeoutTimer: setTimeout(() => this.onTimeout(), this.timeout),
+        timeoutTimer: setTimeout(() => this.onTimeout(), timeout),
       });
 
-      this.instance.postMessage({ requestId, type: 'execute', args });
+      this.instance.postMessage({ requestId, type: 'execute', args: [name, ...args] });
     });
   }
 
@@ -116,7 +145,7 @@ export class SafeTaskRunner<T extends WorkerConstructor> {
 
     const action = this.pendingActions[actionIdx];
 
-    if (action.type === 'upload') {
+    if (action.type === 'upload' || action.type === 'unload') {
       action.resolver(response.return as boolean);
     } else if (action.type === 'execute') {
       clearTimeout(action.timeoutTimer);

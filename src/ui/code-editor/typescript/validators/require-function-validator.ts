@@ -11,7 +11,8 @@ function isClassParameter(node: ts.ParameterDeclaration, name: string): boolean 
 
   return false;
 }
-function isFunctionWithSignature(
+
+export function isFunctionWithSignature(
   node: ts.FunctionDeclaration,
   name: string,
   parameterType: string[],

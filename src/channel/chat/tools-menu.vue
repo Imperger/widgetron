@@ -13,6 +13,7 @@ import { cssVar } from '@/lib/css-var';
 import type { MountPointWatchReleaser } from '@/lib/mount-point-maintainer';
 import { ExternalLibCache } from '@/lib/typescript/external-lib-cache';
 import type { TypescriptEditorWindowInstance } from '@/ui/code-editor/typescript/typescript-editor-window-instance';
+import { optionalFunctionValidator } from '@/ui/code-editor/typescript/validators/optional-function-validator';
 import { requireFunctionValidator } from '@/ui/code-editor/typescript/validators/require-function-validator';
 import { requireInterfaceValidator } from '@/ui/code-editor/typescript/validators/require-interface-validator';
 import DeleteIcon from '@/ui/icons/delete-icon.vue';
@@ -105,6 +106,11 @@ const spawnWidgetEditor = async (id?: number) => {
       requireInterfaceValidator('SessionState'),
       requireFunctionValidator('onUISetup', ['API'], 'Promise<UIInput>'),
       requireFunctionValidator('onUpdate', ['UIInput', 'API'], 'Promise<WidgetModel>'),
+      optionalFunctionValidator(
+        'onBeforeMessageSend',
+        ['UIInput', 'API', 'string'],
+        'Promise<string>',
+      ),
     ],
     onInitialized,
     onSave,

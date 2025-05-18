@@ -21,13 +21,19 @@ import TableView from './views/table-view.vue';
 import { isTextView } from './views/text-view-guard';
 import StringView from './views/text-view.vue';
 
-import { twitchInteractorToken, widgetSharedStateToken } from '@/injection-tokens';
+import {
+  gqlInterceptorToken,
+  twitchInteractorToken,
+  widgetSharedStateToken,
+} from '@/injection-tokens';
 import { JsonObjectComparator, type JSONObject } from '@/lib/json-object-equal';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
 import { SafeTaskRunner, type ExternalMessageListenerUnsubscriber } from '@/lib/safe-task-runner';
 import { TypescriptExtractor } from '@/lib/typescript/typescript-extractor';
+import type { GQLInterceptorListenerUnsubscriber } from '@/twitch/gql/gql-interceptor';
+import type { SendChatMessageRequest } from '@/twitch/gql/types/send-chat-message-request';
 import FloatingWindow from '@/ui/floating-window.vue';
-import QueryWorker from '@/widget/widget-worker?worker&inline';
+import WidgetWorker from '@/widget/widget-worker?worker&inline';
 
 dayjs.extend(duration);
 
@@ -75,6 +81,7 @@ const { label = '', updatePeriod, sourceCode } = defineProps<WidgetProps>();
 const emit = defineEmits<FloatingWidgetEvents>();
 
 const twitchInteractor = inject(twitchInteractorToken);
+const gqlInterceptor = inject(gqlInterceptorToken)!;
 
 const sharedState = inject(widgetSharedStateToken)!;
 
@@ -84,12 +91,13 @@ const uiInput = ref<OnlyUIInputPropertiesWithType | null>(null);
 
 const model = ref<WidgetModel | null>(null);
 
-const worker = new SafeTaskRunner(QueryWorker);
+const worker = new SafeTaskRunner(WidgetWorker);
 
 let unmounted = false;
 let isRunning = false;
 
 let actionListenerUnsub: ExternalMessageListenerUnsubscriber | null = null;
+let sendChatMessageTransformerUnsub: GQLInterceptorListenerUnsubscriber | null = null;
 
 const actionListener = async (action: Action) => {
   switch (action.action) {
@@ -135,28 +143,42 @@ const collectEnvironment = (): Environment => {
   return { ...(channel && { channel }) };
 };
 
-const setupUIInput = async (sourceFile: ts.SourceFile) => {
-  const properties = TypescriptExtractor.interfaceProperties(sourceFile, 'UIInput');
+const uploadCode = async (
+  fnName: string,
+  parameters: string[],
+  sourceFile: ts.SourceFile,
+): Promise<boolean> => {
+  const functionBody = TypescriptExtractor.functionBody(sourceFile, fnName);
 
-  const onUISetupBody = TypescriptExtractor.functionBody(sourceFile, 'onUISetup');
-
-  if (onUISetupBody === null) {
-    emit('close');
-    return null;
+  if (functionBody === null) {
+    return false;
   }
 
-  const onUpdateBodyJs = ts.transpileModule(onUISetupBody.body, {
+  const functionBodyJs = ts.transpileModule(functionBody.body, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
 
-  if (!(await worker.upload(onUISetupBody.async, ['api'], onUpdateBodyJs))) {
-    emit('close');
+  const uploaded = await worker.upload(functionBody.async, fnName, parameters, functionBodyJs);
+
+  if (!uploaded) {
+    return false;
+  }
+
+  return true;
+};
+
+const setupUIInput = async (sourceFile: ts.SourceFile) => {
+  const properties = TypescriptExtractor.interfaceProperties(sourceFile, 'UIInput');
+
+  if (!(await uploadCode('onUISetup', ['api'], sourceFile))) {
     return null;
   }
 
   const uiInputTemplate = reinterpret_cast<OnlyUIInputProperties>(
-    await worker.execute('onUISetup', { env: collectEnvironment() }),
+    await worker.execute({ name: 'onUISetup', args: [{ env: collectEnvironment() }] }),
   );
+
+  await worker.unload('onUISetup');
 
   return [...Object.entries(uiInputTemplate)].reduce(
     (acc, [prop, config]) => ({ ...acc, [prop]: { ...config, type: properties.get(prop) } }),
@@ -164,32 +186,56 @@ const setupUIInput = async (sourceFile: ts.SourceFile) => {
   );
 };
 
-const uploadCode = async (sourceFile: ts.SourceFile) => {
-  const onUpdateBody = TypescriptExtractor.functionBody(sourceFile, 'onUpdate');
-
-  if (onUpdateBody === null) {
-    emit('close');
-    return;
-  }
-
-  const onUpdateBodyJs = ts.transpileModule(onUpdateBody.body, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-  }).outputText;
-
-  const uploaded = await worker.upload(onUpdateBody.async, ['input', 'api'], onUpdateBodyJs);
-
-  if (!uploaded) {
-    emit('close');
-    return;
-  }
-};
-
 const setup = async () => {
   const sourceFile = ts.createSourceFile('main.ts', sourceCode, ts.ScriptTarget.Latest, true);
 
   uiInput.value = await setupUIInput(sourceFile);
 
-  await uploadCode(sourceFile);
+  if (!(await uploadCode('onUpdate', ['input', 'api'], sourceFile))) {
+    emit('close');
+    return;
+  }
+
+  sendChatMessageTransformerUnsub?.();
+
+  if (await uploadCode('onBeforeMessageSend', ['input', 'api', 'message'], sourceFile)) {
+    sendChatMessageTransformerUnsub = gqlInterceptor.transformRequest<SendChatMessageRequest>(
+      { operationName: 'sendChatMessage' },
+      async (x) => {
+        const patched: SendChatMessageRequest = JSON.parse(JSON.stringify(x));
+
+        try {
+          const transformed = (await worker.execute(
+            {
+              name: 'onBeforeMessageSend',
+              args: [
+                toRaw(uiInput.value),
+                { env: collectEnvironment() },
+                patched.variables.input.message,
+              ],
+            },
+            10000,
+          )) as string;
+
+          patched.variables.input.message = transformed;
+
+          return patched;
+        } catch (e) {
+          isRunning = false;
+
+          if (unmounted) {
+            return x;
+          }
+
+          console.error(e);
+
+          emit('close');
+
+          return x;
+        }
+      },
+    );
+  }
 };
 
 watch(
@@ -210,7 +256,10 @@ const onExecute = async () => {
   try {
     const inputBeforeExecution = JSON.parse(JSON.stringify(toRaw(uiInput.value)));
     const result = reinterpret_cast<UpdateResult>(
-      await worker.execute('onUpdate', toRaw(uiInput.value), { env: collectEnvironment() }),
+      await worker.execute({
+        name: 'onUpdate',
+        args: [toRaw(uiInput.value), { env: collectEnvironment() }],
+      }),
     );
 
     if (
@@ -259,6 +308,7 @@ onUnmounted(() => {
   unmounted = true;
 
   actionListenerUnsub?.();
+  sendChatMessageTransformerUnsub?.();
 
   worker.terminate();
 });
