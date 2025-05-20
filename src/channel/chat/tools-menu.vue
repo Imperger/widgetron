@@ -139,6 +139,7 @@ const onExecute = async () => {
   if (widgetPreviewKey === -1) {
     widgetPreviewKey = windowManager.value.spawn({
       type: 'widget_instance',
+      label: widgetEditorInstance.value?.label ?? '',
       updatePeriod: 1000,
       sourceCode: widgetEditorInstance.value!.instance!.getValue(),
       onClose: closeWidgetPreview,
