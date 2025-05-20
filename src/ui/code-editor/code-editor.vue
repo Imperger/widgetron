@@ -3,8 +3,6 @@ import * as monaco from 'monaco-editor';
 import 'monaco-editor/esm/vs/base/browser/ui/codicons/codicon/codicon.ttf';
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker&inline';
 import CssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker&inline';
-import HtmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker&inline';
-import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker&inline';
 import TsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker&inline';
 import { inject, onMounted, onUnmounted, ref } from 'vue';
 
@@ -14,16 +12,10 @@ import type { LocalStorageInterceptorListenerUnsubscriber } from '@/twitch/local
 self.MonacoEnvironment = {
   getWorker: function (_moduleId: unknown, label: string) {
     switch (label) {
-      case 'json':
-        return new JsonWorker();
       case 'css':
       case 'scss':
       case 'less':
         return new CssWorker();
-      case 'html':
-      case 'handlebars':
-      case 'razor':
-        return new HtmlWorker();
       case 'typescript':
       case 'javascript':
         return new TsWorker();
@@ -34,7 +26,7 @@ self.MonacoEnvironment = {
 };
 
 export interface CodeEditorProps {
-  language: 'typescript' | 'html' | 'css' | 'json';
+  language: 'typescript' | 'css';
   placeholder?: string;
 }
 
