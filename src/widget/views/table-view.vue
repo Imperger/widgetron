@@ -1,14 +1,22 @@
 <script setup lang="ts">
-import type { WidgetModelTable } from '../model/widget-model-table';
+import type { WidgetModelTable, WidgetModelTableCell } from '../model/widget-model-table';
 
 const { rows } = defineProps<Omit<WidgetModelTable, 'type'>>();
+
+const cellStyle = ({ text: _1, colspan: _2, rowspan: _3, ...style }: WidgetModelTableCell) => style;
 </script>
 
 <template>
   <table>
     <tbody>
       <tr v-for="(row, rowId) in rows" :key="rowId">
-        <td v-for="(cell, cellId) in row.cells" :key="cellId">
+        <td
+          :key="cellId"
+          v-for="(cell, cellId) in row.cells"
+          :colspan="cell.colspan"
+          :rowspan="cell.rowspan"
+          :style="cellStyle(cell)"
+        >
           {{ cell.text }}
         </td>
       </tr>
