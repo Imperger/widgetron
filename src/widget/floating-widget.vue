@@ -19,7 +19,7 @@ import LineGraph from './views/line-graph.vue';
 import PieChart from './views/pie-chart.vue';
 import TableView from './views/table-view.vue';
 import { isTextView } from './views/text-view-guard';
-import StringView from './views/text-view.vue';
+import TextView from './views/text-view.vue';
 
 import {
   gqlInterceptorToken,
@@ -350,7 +350,7 @@ onUnmounted(() => {
     </div>
     <div class="data-view">
       <div v-if="model === null">No view</div>
-      <StringView v-else-if="isTextView(model)" :value="model" />
+      <TextView v-else-if="isTextView(model)" :value="model" />
       <TableView v-else-if="model.type === 'table'" :rows="model.rows" />
       <PieChart v-else-if="model.type === 'piechart'" :segments="model.segments" />
       <LineGraph
