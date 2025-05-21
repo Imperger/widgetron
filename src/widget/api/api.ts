@@ -26,6 +26,7 @@ export interface ChatMessage {
 
 export interface API {
   env: Environment;
+  caller: 'system' | 'event';
   db: AppDB;
   action: Action;
   state: SessionState;

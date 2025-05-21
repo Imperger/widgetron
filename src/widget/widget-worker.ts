@@ -95,7 +95,7 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
 
       const incomingArgs = incomingArguments(fnRecord.parameters, e.data);
 
-      const outerAPIArgument = findArgument<Pick<API, 'env'>>('api', incomingArgs)!;
+      const outerAPIArgument = findArgument<Pick<API, 'env' | 'caller'>>('api', incomingArgs)!;
       const outerAPI = outerAPIArgument[1];
 
       const apiMethods = {

@@ -180,7 +180,10 @@ const setupUIInput = async (sourceFile: ts.SourceFile) => {
   }
 
   const uiInputTemplate = reinterpret_cast<OnlyUIInputProperties>(
-    await worker.execute({ name: 'onUISetup', args: [{ env: collectEnvironment() }] }),
+    await worker.execute({
+      name: 'onUISetup',
+      args: [{ env: collectEnvironment(), caller: 'system' }],
+    }),
   );
 
   await worker.unload('onUISetup');
@@ -221,7 +224,7 @@ const setup = async () => {
               name: 'onBeforeMessageSend',
               args: [
                 toRaw(uiInput.value),
-                { env: collectEnvironment() },
+                { env: collectEnvironment(), caller: 'system' },
                 patched.variables.input.message,
               ],
             },
@@ -259,19 +262,30 @@ watch(
     if (!isRunning) {
       isRunning = true;
 
-      onExecute();
+      onExecute(false);
     }
   },
   { immediate: true },
 );
 
-const onExecute = async () => {
+let onExecuteTimer = -1;
+
+const onExecute = async (outOfOrder: boolean) => {
+  if (outOfOrder) {
+    clearTimeout(onExecuteTimer);
+  }
+
+  onExecuteTimer = -1;
+
   try {
     const inputBeforeExecution = JSON.parse(JSON.stringify(toRaw(uiInput.value)));
     const result = reinterpret_cast<UpdateResult>(
       await worker.execute({
         name: 'onUpdate',
-        args: [toRaw(uiInput.value), { env: collectEnvironment() }],
+        args: [
+          toRaw(uiInput.value),
+          { env: collectEnvironment(), caller: outOfOrder ? 'event' : 'system' },
+        ],
       }),
     );
 
@@ -292,7 +306,9 @@ const onExecute = async () => {
 
     model.value = result.model;
 
-    setTimeout(() => onExecute(), updatePeriod);
+    if (onExecuteTimer === -1) {
+      onExecuteTimer = setTimeout(() => onExecute(false), updatePeriod);
+    }
   } catch (e) {
     isRunning = false;
 
@@ -316,12 +332,31 @@ const uiInputComponents = computed<IdentifiedUIComponent<UIInputComponentWithTyp
 const is = <T extends UIInputComponent>(x: object, type: string): x is T =>
   'type' in x && x.type === type;
 
+const updateTextInput = async (textInput: UITextInput, value: string) => {
+  textInput.text = value;
+
+  await onExecute(true);
+};
+
+const updateDateTimePicker = async (picker: UIDateTimePicker, value: Date | null) => {
+  picker.date = value;
+
+  await onExecute(true);
+};
+
+const updateSlider = async (slider: UISliderInput, value: number) => {
+  slider.value = value;
+
+  await onExecute(true);
+};
+
 const executeButtonClick = async (id: string) => {
   await worker.execute({
     name: NamingConvention.onClick(id),
     args: [toRaw(uiInput.value), { env: collectEnvironment(), caller: 'event' }],
   });
 
+  await onExecute(true);
 };
 
 const buttonStyle = ({ type: _, id: _0, caption: _1, ...style }: IdentifiedUIComponent<UIButton>) =>
@@ -357,12 +392,12 @@ onUnmounted(() => {
           v-if="is<UITextInput>(component, 'UITextInput')"
           :label="component.label"
           :value="component.text"
-          @update:value="(e) => ((uiInput![component.id] as UITextInput).text = e)"
+          @update:value="(e) => updateTextInput(uiInput![component.id] as UITextInput, e)"
         />
         <DateTimePicker
           v-else-if="is<UIDateTimePicker>(component, 'UIDateTimePicker')"
           :value="component.date"
-          @update:value="(e) => ((uiInput![component.id] as UIDateTimePicker).date = e)"
+          @update:value="(e) => updateDateTimePicker(uiInput![component.id] as UIDateTimePicker, e)"
         />
         <SliderInput
           v-else-if="is<UISliderInput>(component, 'UISliderInput')"
@@ -371,7 +406,7 @@ onUnmounted(() => {
           :max="component.max"
           :step="component.step"
           :value="component.value"
-          @update:value="(e) => ((uiInput![component.id] as UISliderInput).value = e)"
+          @update:value="(e) => updateSlider(uiInput![component.id] as UISliderInput, e)"
         />
         <UiButton
           v-else-if="is<UIButton>(component, 'UIButton')"
