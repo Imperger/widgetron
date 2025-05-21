@@ -7,8 +7,11 @@ import { useRoute } from 'vue-router';
 
 import type { Environment, EnvironmentChannel } from './api/environment';
 import DateTimePicker from './input/date-time-picker.vue';
+import { NamingConvention } from './input/naming-convention';
 import type { OnlyUIInputProperties } from './input/only-ui-input-properties';
 import SliderInput from './input/slider-input.vue';
+import type { UIButton } from './input/ui-button';
+import UiButton from './input/ui-button.vue';
 import type { UIDateTimePicker } from './input/ui-date-time-picker';
 import type { UIInputComponent } from './input/ui-input-component';
 import type { UISliderInput } from './input/ui-slider-input';
@@ -54,6 +57,8 @@ export interface FloatingWidgetEvents {
 }
 
 export type UIInputComponentWithType = UIInputComponent & { type: string };
+
+type IdentifiedUIComponent<T extends UIInputComponent> = T & { id: string; type: string };
 
 export type OnlyUIInputPropertiesWithType = {
   [K in keyof OnlyUIInputProperties]: UIInputComponentWithType;
@@ -186,6 +191,12 @@ const setupUIInput = async (sourceFile: ts.SourceFile) => {
   );
 };
 
+const setupButtonHandlers = async (sourceFile: ts.SourceFile) => {
+  for (const btn of TypescriptExtractor.findButtonsInUIInput(sourceFile)) {
+    await uploadCode(NamingConvention.onClick(btn.id), ['input', 'api'], sourceFile);
+  }
+};
+
 const setup = async () => {
   const sourceFile = ts.createSourceFile('main.ts', sourceCode, ts.ScriptTarget.Latest, true);
 
@@ -236,6 +247,8 @@ const setup = async () => {
       },
     );
   }
+
+  await setupButtonHandlers(sourceFile);
 };
 
 watch(
@@ -293,12 +306,26 @@ const onExecute = async () => {
   }
 };
 
-const uiInputComponents = computed(() =>
-  [...Object.entries(uiInput.value ?? {})].map(([id, state]) => ({ id, ...state })),
+const uiInputComponents = computed<IdentifiedUIComponent<UIInputComponentWithType>[]>(() =>
+  [...Object.entries(uiInput.value ?? {})].map(([id, state]) => ({
+    id,
+    ...state,
+  })),
 );
 
 const is = <T extends UIInputComponent>(x: object, type: string): x is T =>
   'type' in x && x.type === type;
+
+const executeButtonClick = async (id: string) => {
+  await worker.execute({
+    name: NamingConvention.onClick(id),
+    args: [toRaw(uiInput.value), { env: collectEnvironment(), caller: 'event' }],
+  });
+
+};
+
+const buttonStyle = ({ type: _, id: _0, caption: _1, ...style }: IdentifiedUIComponent<UIButton>) =>
+  style;
 
 onMounted(() => {
   actionListenerUnsub = worker.subscribeToUnrecognizedMessages<Action>(actionListener);
@@ -345,6 +372,12 @@ onUnmounted(() => {
           :step="component.step"
           :value="component.value"
           @update:value="(e) => ((uiInput![component.id] as UISliderInput).value = e)"
+        />
+        <UiButton
+          v-else-if="is<UIButton>(component, 'UIButton')"
+          :caption="component.caption"
+          @click="executeButtonClick(component.id)"
+          :style="buttonStyle(component)"
         />
       </template>
     </div>

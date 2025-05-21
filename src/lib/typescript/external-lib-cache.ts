@@ -110,6 +110,13 @@ export class ExternalLibCache {
       );
 
       ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
+        'ui-button.ts',
+        import.meta.glob('/src/widget/input/ui-button.ts', { as: 'raw' }),
+        [],
+        ['remove-export'],
+      );
+
+      ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
         'ui-input-component.ts',
         import.meta.glob('/src/widget/input/ui-input-component.ts', { as: 'raw' }),
         [{ type: 'type', name: 'UIInputComponent' }],

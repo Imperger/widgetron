@@ -5,6 +5,14 @@ export interface FunctionBody {
   body: string;
 }
 
+interface ButtonDescriptor {
+  id: string;
+  startColumn: number;
+  startLineNumber: number;
+  endColumn: number;
+  endLineNumber: number;
+}
+
 export class TypescriptExtractor {
   static functionBody(sourceFile: ts.SourceFile, functionName: string): FunctionBody | null {
     function findFunctionBody(node: ts.Node): FunctionBody | null {
@@ -78,5 +86,42 @@ export class TypescriptExtractor {
     });
 
     return properties;
+  }
+
+  static globalScopeFunctionNames(sourceFile: ts.SourceFile): string[] {
+    const functions: string[] = [];
+
+    ts.forEachChild(sourceFile, (node) => {
+      if (ts.isFunctionDeclaration(node) && node.name) {
+        functions.push(node.name.text);
+      }
+    });
+
+    return functions;
+  }
+
+  static findButtonsInUIInput(tree: ts.SourceFile): ButtonDescriptor[] {
+    const buttons: ButtonDescriptor[] = [];
+
+    ts.forEachChild(tree, (node) => {
+      if (ts.isInterfaceDeclaration(node) && node.name.text === 'UIInput') {
+        node.members.forEach((member) => {
+          if (ts.isPropertySignature(member) && member.type?.getText() === 'UIButton') {
+            const start = tree.getLineAndCharacterOfPosition(member.getStart(tree));
+            const end = tree.getLineAndCharacterOfPosition(member.getEnd());
+
+            buttons.push({
+              id: member.name.getText(),
+              startLineNumber: start.line + 1,
+              startColumn: start.character + 1,
+              endLineNumber: end.line + 1,
+              endColumn: end.character + 1,
+            });
+          }
+        });
+      }
+    });
+
+    return buttons;
   }
 }
