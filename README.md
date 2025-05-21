@@ -37,6 +37,43 @@ async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
 }
 ```
 
+### Session state
+
+Currently, the only two places where user code can be placed and executed are `onUISetup` and `onUpdate`. Defining variables outside of these functions is forbidden:
+
+```ts
+// ❌ Bad: variable defined outside of allowed functions
+let a = 'abc';
+
+async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
+  return a; // ReferenceError: a is not defined
+}
+```
+
+The way to store data between function calls is by using `SessionState`.
+
+This example simply prints a counter that increased by 1 on each `onUpdate` call
+
+```ts
+interface UIInput extends OnlyUIInputProperties {}
+
+interface SessionState {
+  counter: number; // Declare a counter state variable
+}
+
+async function onUISetup(api: API): Promise<UIInput> {
+  api.state.counter = 0; // Set the initial value
+
+  return {};
+}
+
+async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
+  api.state.counter++; // Increase the counter
+
+  return api.state.counter.toString();
+}
+```
+
 ### Text input
 
 A widget can have several inputs. Here's an example of using one `UITextInput`. This widget simply shows two inputs, `a` and `b`, and prints their sum.
@@ -66,6 +103,66 @@ async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
 
   // The returned value of the function is displayed on the widget, right under the inputs
   return `${input.a.text} + ${input.b.text} = ${a + b}`;
+}
+```
+
+### Button
+
+`UIButton` is a UI element designed to trigger an action when clicked. When declared inside the `UIInput` interface, a corresponding function handler **must** be defined using the naming convention `[buttonName]OnClick`. For example, a button named `increment` should have a handler function named `incrementOnClick`.
+
+```ts
+/**
+ * UIInput interface defines the UI layout.
+ * It includes two buttons: 'increment' and 'decrement'.
+ */
+interface UIInput extends OnlyUIInputProperties {
+  increment: UIButton;
+  decrement: UIButton;
+}
+
+/**
+ * SessionState defines the shape of the persistent state.
+ * It stores the current value of the counter.
+ */
+interface SessionState {
+  counter: number;
+}
+
+/**
+ * Called when the 'increment' button is clicked.
+ * Increments the counter in the session state.
+ */
+async function incrementOnClick(input: UIInput, api: API): Promise<void> {
+  api.state.counter++;
+}
+
+/**
+ * Called when the 'decrement' button is clicked.
+ * Decrements the counter in the session state.
+ */
+async function decrementOnClick(input: UIInput, api: API): Promise<void> {
+  api.state.counter--;
+}
+
+/**
+ * Initializes the UI and session state.
+ * Sets the counter to 0 and defines the appearance of the buttons.
+ */
+async function onUISetup(api: API): Promise<UIInput> {
+  api.state.counter = 0;
+
+  return {
+    decrement: { caption: '-', fontSize: '32px', padding: '5px' },
+    increment: { caption: '+', fontSize: '32px', padding: '5px' },
+  };
+}
+
+/**
+ * Updates the widget's display.
+ * Returns the current value of the counter.
+ */
+async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
+  return `Counter: ${api.state.counter}`;
 }
 ```
 
@@ -114,40 +211,26 @@ async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
 }
 ```
 
-### Session state
+## OnUpdate
 
-Currently, the only two places where user code can be placed and executed are `onUISetup` and `onUpdate`. Defining variables outside of these functions is forbidden:
+`OnUpdate` is the heart of a widget. This function is called each time the widget's view needs to be updated. Usually, it is called once per second, but it can also be triggered when the UI input changes — for example, when the user moves a slider, types in a text input, etc.
 
-```ts
-// ❌ Bad: variable defined outside of allowed functions
-let a = 'abc';
+`OnUpdate` may perform heavy calculations or network requests. To avoid executing such operations every time the user drags a slider or types in a text box, you can use `api.caller` to distinguish the source of the call. It can have two values:
 
-async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
-  return a; // ReferenceError: a is not defined
-}
-```
-
-The way to store data between function calls is by using `SessionState`.
-
-This example simply prints a counter that increased by 1 on each `onUpdate` call
+- `system` – when called by the timer
+- `event` – when triggered by user interaction
 
 ```ts
-interface UIInput extends OnlyUIInputProperties {}
-
-interface SessionState {
-  counter: number; // declare a counter state variable
-}
-
-async function onUISetup(api: API): Promise<UIInput> {
-  api.state.counter = 0; // set the initial value
-
-  return {};
-}
-
 async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
-  api.state.counter++; // increase the counter
+  // If triggered by a user, skip the heavy computations.
+  if (api.caller === 'event') {
+    // If it returns 'undefined', the view reuses the previous view model.
+    return;
+  }
 
-  return api.state.counter.toString();
+  // Some heavy operations...
+
+  return 'A view generated from heavy calculations';
 }
 ```
 
