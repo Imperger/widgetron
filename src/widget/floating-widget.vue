@@ -41,7 +41,7 @@ import WidgetWorker from '@/widget/widget-worker?worker&inline';
 dayjs.extend(duration);
 
 interface UpdateResult {
-  model: WidgetModel;
+  model?: WidgetModel;
   input: JSONObject;
 }
 
@@ -304,7 +304,9 @@ const onExecute = async (outOfOrder: boolean) => {
       throw new Error('UIInput object is malformed');
     }
 
-    model.value = result.model;
+    if (result.model !== undefined) {
+      model.value = result.model;
+    }
 
     if (onExecuteTimer === -1) {
       onExecuteTimer = setTimeout(() => onExecute(false), updatePeriod);
