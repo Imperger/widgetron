@@ -20,6 +20,7 @@ export function requireButtonClickHandlerValidator() {
         ...x,
         message: `Missing 'async function ${NamingConvention.onClick(id)}(input: UIInput, api: API): Promise<void>' handler for the '${id}' button`,
         severity: monaco.MarkerSeverity.Error,
+        code: `requireBtnOnClick_${NamingConvention.onClick(id)}`,
       }));
   };
 }

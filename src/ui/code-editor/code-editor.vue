@@ -8,6 +8,7 @@ import { inject, onMounted, onUnmounted, ref } from 'vue';
 
 import { localStorageInterceptorToken } from '@/injection-tokens';
 import type { LocalStorageInterceptorListenerUnsubscriber } from '@/twitch/local-storage-interceptor';
+import './typescript/quick-fix';
 
 self.MonacoEnvironment = {
   getWorker: function (_moduleId: unknown, label: string) {
