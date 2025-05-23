@@ -2,6 +2,8 @@
 import * as monaco from 'monaco-editor';
 import { computed, inject, onMounted, onUnmounted, ref, shallowRef } from 'vue';
 
+import WidgetDeleteConfirmDialog from './widget-delete-confirm-dialog.vue';
+
 import type { WidgetInfo } from '@/extension-db';
 import {
   bodyMountPointMaintainerToken,
@@ -32,6 +34,12 @@ interface EditorInstance {
   instance: monaco.editor.IStandaloneCodeEditor | null;
 }
 
+interface WidgetDeleteDialogProps {
+  shown: boolean;
+  label: string;
+  id: number;
+}
+
 const db = inject(dbToken)!;
 const mountPointMaintainer = inject(bodyMountPointMaintainerToken)!;
 const windowManager = inject(windowManagerToken)!;
@@ -42,6 +50,8 @@ const widgetEditorInstance = shallowRef<EditorInstance | null>(null);
 let widgetPreviewKey = -1;
 
 const widgetList = ref<WidgetInfo[]>([]);
+
+const widgetDeleteDialog = ref<WidgetDeleteDialogProps>({ shown: false, label: '', id: -1 });
 
 const sharedState = inject(widgetSharedStateToken)!;
 
@@ -201,14 +211,23 @@ const spawnWidget = async (id: number) => {
   }
 };
 
-const deleteWidget = async (id: number) => {
-  await db.deleteWidget(id);
+const openWidgetDeleteConfirmDialog = (id: number, label: string) => {
+  widgetDeleteDialog.value = { shown: true, id, label };
+};
 
-  const deleteIdx = widgetList.value.findIndex((x) => x.id === id);
+const closeWidgetDeleteConfirmDialog = () =>
+  (widgetDeleteDialog.value = { shown: false, id: -1, label: '' });
+
+const onWidgetDeleteConfirm = async () => {
+  await db.deleteWidget(widgetDeleteDialog.value.id);
+
+  const deleteIdx = widgetList.value.findIndex((x) => x.id === widgetDeleteDialog.value.id);
 
   if (deleteIdx !== -1) {
     widgetList.value.splice(deleteIdx, 1);
   }
+
+  closeWidgetDeleteConfirmDialog();
 };
 
 const isWidgetEditorOpened = computed(() => widgetEditorInstance.value !== null);
@@ -242,7 +261,7 @@ onUnmounted(() => {
             >
               <EditIcon :color="cssVar('color-border-toggle-checked') ?? undefined" /></button
             ><button
-              @click.stop="deleteWidget(widget.id)"
+              @click.stop="openWidgetDeleteConfirmDialog(widget.id, widget.label)"
               :disabled="widgetEditorInstance?.id === widget.id"
               class="widget-menu-btn"
             >
@@ -251,6 +270,12 @@ onUnmounted(() => {
       ></TwitchMenu>
     </button>
   </Teleport>
+  <WidgetDeleteConfirmDialog
+    v-model:show="widgetDeleteDialog.shown"
+    :label="widgetDeleteDialog.label"
+    @ok="onWidgetDeleteConfirm"
+    @cancel="closeWidgetDeleteConfirmDialog"
+  />
 </template>
 
 <style scoped>
