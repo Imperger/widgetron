@@ -1,22 +1,22 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 
-import MyDialog from '@/ui/my-dialog.vue';
+import ConfirmDialog from '@/ui/confirm-dialog.vue';
 
-export interface MyWidgetLabelProps {
+export interface WidgetLabelDialogProps {
   placeholder?: string;
 }
 
-export interface MyWidgetLabelDialogEvents {
+export interface WidgetLabelDialogEvents {
   (e: 'ok', label: string): void;
   (e: 'cancel'): void;
 }
 
-const { placeholder = '' } = defineProps<MyWidgetLabelProps>();
+const { placeholder = '' } = defineProps<WidgetLabelDialogProps>();
 
 const show = defineModel<boolean>('show', { required: true });
 
-const emit = defineEmits<MyWidgetLabelDialogEvents>();
+const emit = defineEmits<WidgetLabelDialogEvents>();
 
 const label = ref(placeholder ?? '');
 
@@ -29,7 +29,7 @@ watch(show, (x) => !x && closeDialog());
 </script>
 
 <template>
-  <MyDialog v-model:show="show">
+  <ConfirmDialog v-model:show="show">
     <h3>Enter widget label</h3>
     <p>The widget will be added under this label to the widget menu</p>
     <input v-model="label" type="text" class="lavel-input" />
@@ -37,7 +37,7 @@ watch(show, (x) => !x && closeDialog());
       <button @click="emit('cancel')" class="action-btn">Cancel</button>
       <button @click="emit('ok', label)" class="action-btn">Ok</button>
     </div>
-  </MyDialog>
+  </ConfirmDialog>
 </template>
 
 <style scoped>

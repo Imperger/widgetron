@@ -13,7 +13,7 @@ import ErrorLog from '@/ui/code-editor/error-log.vue';
 import FloatingWindow from '@/ui/floating-window.vue';
 import PlayIcon from '@/ui/icons/play-icon.vue';
 import TickIcon from '@/ui/icons/tick-icon.vue';
-import MyWidgetLabelDialog from '@/widget/my-widget-label-dialog.vue';
+import WidgetLabelDialog from '@/widget/widget-label-dialog.vue';
 
 export interface TypescriptEditorWindowProps {
   label?: string;
@@ -139,7 +139,7 @@ onUnmounted(() => disposerList.forEach((x) => x.dispose()));
     />
     <ErrorLog :logs="errorMarkers" class="error-log" />
   </FloatingWindow>
-  <MyWidgetLabelDialog
+  <WidgetLabelDialog
     v-model:show="setWidgetLabelDialogShown"
     :placeholder="label"
     @ok="onSetWidgetLabelOk"
