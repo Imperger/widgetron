@@ -4,6 +4,7 @@ import { MessagesAfterLastTick } from './messages-after-last-tick';
 
 import AppDb from '@/db/app-db';
 import { autovivify, isUndefined } from '@/lib/autovivify';
+import type { Screenshot } from '@/lib/capture-screenshot';
 import { FixedQueue } from '@/lib/fixed-queue';
 
 interface UploadCodeMessage {
@@ -29,7 +30,14 @@ interface ExecuteMessage {
   args: [FunctionName, ...unknown[]];
 }
 
-type IncomingMessage = UploadCodeMessage | UnloadCodeMessage | ExecuteMessage;
+interface CaptureScreenshot {
+  type: 'captureScreenshot';
+  image: string;
+  width: number;
+  height: number;
+}
+
+type IncomingMessage = UploadCodeMessage | UnloadCodeMessage | ExecuteMessage | CaptureScreenshot;
 
 interface ExtraType {
   type: unknown;
@@ -51,8 +59,22 @@ const db = new AppDb();
 
 const functionRegistry: FunctionRecord[] = [];
 
-const emitAction = (action: 'sendMessage' | 'deleteMessage' | 'banUser', ...args: unknown[]) =>
-  self.postMessage({ action, args });
+const emitAction = (
+  action: 'sendMessage' | 'deleteMessage' | 'banUser' | 'captureScreenshot',
+  ...args: unknown[]
+) => self.postMessage({ action, args });
+
+type CaptureScreenshotResolver = (screenshot: Screenshot) => void;
+
+let captureScreenshotResolver: CaptureScreenshotResolver | null = null;
+
+async function captureScreenshot(): Promise<Screenshot> {
+  return new Promise<Screenshot>((resolve) => {
+    captureScreenshotResolver = resolve;
+
+    emitAction('captureScreenshot');
+  });
+}
 
 const allMessagesAfterLastTick = new MessagesAfterLastTick(db);
 const channelMessagesAfterLastTick = new MessagesAfterLastTick(db);
@@ -105,6 +127,7 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
             (x) => x.roomDisplayName === outerAPI.env.channel?.name,
           ),
         isUndefined,
+        captureScreenshot,
       };
 
       const api: API = {
@@ -148,6 +171,13 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
       channelMessagesAfterLastTick.leaveTick();
       allMessagesAfterLastTick.leaveTick();
 
+      break;
+    case 'captureScreenshot':
+      captureScreenshotResolver?.({
+        image: e.data.image,
+        width: e.data.width,
+        height: e.data.height,
+      });
       break;
   }
 };

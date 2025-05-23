@@ -2,6 +2,7 @@ import type { Action } from './action';
 import type { Environment } from './environment';
 
 import type AppDB from '@/db/app-db';
+import type { Screenshot } from '@/lib/capture-screenshot';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface SessionState {}
@@ -33,4 +34,5 @@ export interface API {
   channelMessagesAfterLastTick(): Promise<ChatMessage[]>;
   allMessagesAfterLastTick(): Promise<ChatMessage[]>;
   isUndefined(x: unknown): boolean;
+  captureScreenshot(): Promise<Screenshot>;
 }

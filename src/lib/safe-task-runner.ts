@@ -120,6 +120,10 @@ export class SafeTaskRunner<T extends WorkerConstructor> {
     };
   }
 
+  postMessage(message: unknown, transfer: Transferable[]): void {
+    this.instance.postMessage(message, transfer);
+  }
+
   terminate(): void {
     this.instance.terminate();
   }

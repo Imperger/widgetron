@@ -29,6 +29,7 @@ import {
   twitchInteractorToken,
   widgetSharedStateToken,
 } from '@/injection-tokens';
+import { captureScreenshot } from '@/lib/capture-screenshot';
 import { JsonObjectComparator, type JSONObject } from '@/lib/json-object-equal';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
 import { SafeTaskRunner, type ExternalMessageListenerUnsubscriber } from '@/lib/safe-task-runner';
@@ -79,7 +80,12 @@ interface BanUserAction {
   args: [string, string, string];
 }
 
-type Action = SendMessageAction | DeleteMessageAction | BanUserAction;
+interface CaptureScreenshotAction {
+  action: 'captureScreenshot';
+  args: [];
+}
+
+type Action = SendMessageAction | DeleteMessageAction | BanUserAction | CaptureScreenshotAction;
 
 const { label = '', updatePeriod, sourceCode } = defineProps<WidgetProps>();
 
@@ -114,6 +120,13 @@ const actionListener = async (action: Action) => {
       break;
     case 'banUser':
       await twitchInteractor?.banUser(...action.args);
+      break;
+    case 'captureScreenshot':
+      {
+        const screenshot = captureScreenshot() ?? { image: '', width: 0, height: 0 };
+
+        worker.postMessage({ type: 'captureScreenshot', ...screenshot }, []);
+      }
       break;
   }
 };

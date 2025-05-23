@@ -145,7 +145,14 @@ export class ExternalLibCache {
       );
 
       ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
-        'environment.ts',
+        'screenshot.ts',
+        import.meta.glob('/src/lib/capture-screenshot.ts', { as: 'raw' }),
+        [{ type: 'interface', name: 'Screenshot' }],
+        ['remove-export'],
+      );
+
+      ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
+        'api.ts',
         import.meta.glob('/src/widget/api/api.ts', { as: 'raw' }),
         [
           { type: 'interface', name: 'API' },
