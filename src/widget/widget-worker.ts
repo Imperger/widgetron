@@ -70,6 +70,7 @@ let captureScreenshotResolver: CaptureScreenshotResolver | null = null;
 
 async function captureScreenshot(): Promise<Screenshot> {
   return new Promise<Screenshot>((resolve) => {
+    captureScreenshotResolver?.({ image: '', width: 0, height: 0 });
     captureScreenshotResolver = resolve;
 
     emitAction('captureScreenshot');
@@ -178,6 +179,7 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
         width: e.data.width,
         height: e.data.height,
       });
+      captureScreenshotResolver = null;
       break;
   }
 };
