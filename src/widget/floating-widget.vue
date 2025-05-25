@@ -123,9 +123,13 @@ const actionListener = async (action: Action) => {
       break;
     case 'captureScreenshot':
       {
-        const screenshot = captureScreenshot() ?? { image: '', width: 0, height: 0 };
+        const screenshot = (await captureScreenshot()) ?? {
+          image: new Uint8Array(),
+          width: 0,
+          height: 0,
+        };
 
-        worker.postMessage({ type: 'captureScreenshot', ...screenshot }, []);
+        worker.postMessage({ type: 'captureScreenshot', ...screenshot }, [screenshot.image.buffer]);
       }
       break;
   }

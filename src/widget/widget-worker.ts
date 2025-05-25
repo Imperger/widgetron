@@ -30,11 +30,8 @@ interface ExecuteMessage {
   args: [FunctionName, ...unknown[]];
 }
 
-interface CaptureScreenshot {
+interface CaptureScreenshot extends Screenshot {
   type: 'captureScreenshot';
-  image: string;
-  width: number;
-  height: number;
 }
 
 type IncomingMessage = UploadCodeMessage | UnloadCodeMessage | ExecuteMessage | CaptureScreenshot;
@@ -70,7 +67,7 @@ let captureScreenshotResolver: CaptureScreenshotResolver | null = null;
 
 async function captureScreenshot(): Promise<Screenshot> {
   return new Promise<Screenshot>((resolve) => {
-    captureScreenshotResolver?.({ image: '', width: 0, height: 0 });
+    captureScreenshotResolver?.({ image: new Uint8Array(), width: 0, height: 0 });
     captureScreenshotResolver = resolve;
 
     emitAction('captureScreenshot');

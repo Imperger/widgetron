@@ -1,10 +1,10 @@
 export interface Screenshot {
-  image: string;
+  image: Uint8Array;
   width: number;
   height: number;
 }
 
-export function captureScreenshot(): Screenshot | null {
+export async function captureScreenshot(): Promise<Screenshot | null> {
   const video = document.querySelector('video');
 
   if (!video) {
@@ -23,5 +23,18 @@ export function captureScreenshot(): Screenshot | null {
 
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  return { image: canvas.toDataURL('image/png'), width: canvas.width, height: canvas.height };
+  return new Promise<Screenshot | null>((resolve) => {
+    canvas.toBlob(async (blob) => {
+      if (blob === null) {
+        resolve(null);
+        return;
+      }
+
+      resolve({
+        image: new Uint8Array(await blob.arrayBuffer()),
+        width: canvas.width,
+        height: canvas.height,
+      });
+    }, 'image/png');
+  });
 }
