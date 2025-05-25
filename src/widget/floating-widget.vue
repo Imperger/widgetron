@@ -29,7 +29,7 @@ import {
   twitchInteractorToken,
   widgetSharedStateToken,
 } from '@/injection-tokens';
-import { captureScreenshot } from '@/lib/capture-screenshot';
+import { captureScreenshot, type ScreenshotFormat } from '@/lib/capture-screenshot';
 import { JsonObjectComparator, type JSONObject } from '@/lib/json-object-equal';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
 import { SafeTaskRunner, type ExternalMessageListenerUnsubscriber } from '@/lib/safe-task-runner';
@@ -82,7 +82,7 @@ interface BanUserAction {
 
 interface CaptureScreenshotAction {
   action: 'captureScreenshot';
-  args: [];
+  args: [ScreenshotFormat];
 }
 
 type Action = SendMessageAction | DeleteMessageAction | BanUserAction | CaptureScreenshotAction;
@@ -123,7 +123,7 @@ const actionListener = async (action: Action) => {
       break;
     case 'captureScreenshot':
       {
-        const screenshot = (await captureScreenshot()) ?? {
+        const screenshot = (await captureScreenshot(...action.args)) ?? {
           image: new Uint8Array(),
           width: 0,
           height: 0,

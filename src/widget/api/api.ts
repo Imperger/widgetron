@@ -34,5 +34,5 @@ export interface API {
   channelMessagesAfterLastTick(): Promise<ChatMessage[]>;
   allMessagesAfterLastTick(): Promise<ChatMessage[]>;
   isUndefined(x: unknown): boolean;
-  captureScreenshot(): Promise<Screenshot>;
+  captureScreenshot(type: 'rgba' | 'png'): Promise<Screenshot>;
 }

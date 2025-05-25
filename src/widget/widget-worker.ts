@@ -4,7 +4,7 @@ import { MessagesAfterLastTick } from './messages-after-last-tick';
 
 import AppDb from '@/db/app-db';
 import { autovivify, isUndefined } from '@/lib/autovivify';
-import type { Screenshot } from '@/lib/capture-screenshot';
+import type { Screenshot, ScreenshotFormat } from '@/lib/capture-screenshot';
 import { FixedQueue } from '@/lib/fixed-queue';
 
 interface UploadCodeMessage {
@@ -32,6 +32,7 @@ interface ExecuteMessage {
 
 interface CaptureScreenshot extends Screenshot {
   type: 'captureScreenshot';
+  args: [ScreenshotFormat];
 }
 
 type IncomingMessage = UploadCodeMessage | UnloadCodeMessage | ExecuteMessage | CaptureScreenshot;
@@ -65,12 +66,12 @@ type CaptureScreenshotResolver = (screenshot: Screenshot) => void;
 
 let captureScreenshotResolver: CaptureScreenshotResolver | null = null;
 
-async function captureScreenshot(): Promise<Screenshot> {
+async function captureScreenshot(type: ScreenshotFormat): Promise<Screenshot> {
   return new Promise<Screenshot>((resolve) => {
     captureScreenshotResolver?.({ image: new Uint8Array(), width: 0, height: 0 });
     captureScreenshotResolver = resolve;
 
-    emitAction('captureScreenshot');
+    emitAction('captureScreenshot', type);
   });
 }
 

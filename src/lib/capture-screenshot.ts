@@ -4,7 +4,32 @@ export interface Screenshot {
   height: number;
 }
 
-export async function captureScreenshot(): Promise<Screenshot | null> {
+function toRgba(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): Screenshot {
+  const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+  return { image: new Uint8Array(image.data.buffer), width: image.width, height: image.height };
+}
+
+async function toPng(canvas: HTMLCanvasElement): Promise<Screenshot | null> {
+  return new Promise<Screenshot | null>((resolve) => {
+    canvas.toBlob(async (blob) => {
+      if (blob === null) {
+        resolve(null);
+        return;
+      }
+
+      resolve({
+        image: new Uint8Array(await blob.arrayBuffer()),
+        width: canvas.width,
+        height: canvas.height,
+      });
+    }, 'image/png');
+  });
+}
+
+export type ScreenshotFormat = 'rgba' | 'png';
+
+export async function captureScreenshot(format: ScreenshotFormat): Promise<Screenshot | null> {
   const video = document.querySelector('video');
 
   if (!video) {
@@ -23,18 +48,10 @@ export async function captureScreenshot(): Promise<Screenshot | null> {
 
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  return new Promise<Screenshot | null>((resolve) => {
-    canvas.toBlob(async (blob) => {
-      if (blob === null) {
-        resolve(null);
-        return;
-      }
-
-      resolve({
-        image: new Uint8Array(await blob.arrayBuffer()),
-        width: canvas.width,
-        height: canvas.height,
-      });
-    }, 'image/png');
-  });
+  switch (format) {
+    case 'rgba':
+      return toRgba(ctx, canvas);
+    case 'png':
+      return toPng(canvas);
+  }
 }
