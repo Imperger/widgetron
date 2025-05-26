@@ -33,7 +33,10 @@ import { captureScreenshot, type ScreenshotFormat } from '@/lib/capture-screensh
 import { JsonObjectComparator, type JSONObject } from '@/lib/json-object-equal';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
 import { SafeTaskRunner, type ExternalMessageListenerUnsubscriber } from '@/lib/safe-task-runner';
-import { TypescriptExtractor } from '@/lib/typescript/typescript-extractor';
+import {
+  TypescriptExtractor,
+  type FunctionDeclaration,
+} from '@/lib/typescript/typescript-extractor';
 import type { GQLInterceptorListenerUnsubscriber } from '@/twitch/gql/gql-interceptor';
 import type { SendChatMessageRequest } from '@/twitch/gql/types/send-chat-message-request';
 import FloatingWindow from '@/ui/floating-window.vue';
@@ -192,10 +195,6 @@ const uploadCode = async (
 const setupUIInput = async (sourceFile: ts.SourceFile) => {
   const properties = TypescriptExtractor.interfaceProperties(sourceFile, 'UIInput');
 
-  if (!(await uploadCode('onUISetup', ['api'], sourceFile))) {
-    return null;
-  }
-
   const uiInputTemplate = reinterpret_cast<OnlyUIInputProperties>(
     await worker.execute({
       name: 'onUISetup',
@@ -203,33 +202,35 @@ const setupUIInput = async (sourceFile: ts.SourceFile) => {
     }),
   );
 
-  await worker.unload('onUISetup');
-
   return [...Object.entries(uiInputTemplate)].reduce(
     (acc, [prop, config]) => ({ ...acc, [prop]: { ...config, type: properties.get(prop) } }),
     {},
   );
 };
 
-const setupButtonHandlers = async (sourceFile: ts.SourceFile) => {
-  for (const btn of TypescriptExtractor.findButtonsInUIInput(sourceFile)) {
-    await uploadCode(NamingConvention.onClick(btn.id), ['input', 'api'], sourceFile);
+const setupGlobalScopeFunctions = async (
+  sourceFile: ts.SourceFile,
+): Promise<FunctionDeclaration[]> => {
+  const globalScopeFunctionsInfo = TypescriptExtractor.globalScopeFunctionsInfo(sourceFile);
+
+  for (const fn of globalScopeFunctionsInfo) {
+    await uploadCode(
+      fn.name,
+      fn.parameters.map((x) => x.name),
+      sourceFile,
+    );
   }
+
+  return globalScopeFunctionsInfo;
 };
 
 const setup = async () => {
   const sourceFile = ts.createSourceFile('main.ts', sourceCode, ts.ScriptTarget.Latest, true);
 
-  uiInput.value = await setupUIInput(sourceFile);
-
-  if (!(await uploadCode('onUpdate', ['input', 'api'], sourceFile))) {
-    emit('close');
-    return;
-  }
-
+  const globalScopeFunctions = await setupGlobalScopeFunctions(sourceFile);
   sendChatMessageTransformerUnsub?.();
 
-  if (await uploadCode('onBeforeMessageSend', ['input', 'api', 'message'], sourceFile)) {
+  if (globalScopeFunctions.some((x) => x.name === 'onBeforeMessageSend')) {
     sendChatMessageTransformerUnsub = gqlInterceptor.transformRequest<SendChatMessageRequest>(
       { operationName: 'sendChatMessage' },
       async (x) => {
@@ -267,8 +268,19 @@ const setup = async () => {
       },
     );
   }
+  try {
+    uiInput.value = await setupUIInput(sourceFile);
+  } catch (e) {
+    isRunning = false;
 
-  await setupButtonHandlers(sourceFile);
+    if (unmounted) {
+      return;
+    }
+
+    console.error(e);
+
+    emit('close');
+  }
 };
 
 watch(

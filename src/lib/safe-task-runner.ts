@@ -5,17 +5,11 @@ interface WorkerConstructor {
 }
 
 type UploadResolver = (uploaded: boolean) => void;
-type UnloadResolver = (uploaded: boolean) => void;
 type ExecuteResolver = (result: unknown) => void;
 
 interface PendingUploadAction {
   type: 'upload';
   resolver: UploadResolver;
-}
-
-interface PendingUnloadAction {
-  type: 'unload';
-  resolver: UnloadResolver;
 }
 
 interface PendingExecuteAction {
@@ -29,8 +23,7 @@ interface ActionResponseId {
   requestId?: number;
 }
 
-type PendingAction = ActionResponseId &
-  (PendingUploadAction | PendingUnloadAction | PendingExecuteAction);
+type PendingAction = ActionResponseId & (PendingUploadAction | PendingExecuteAction);
 
 export type ActionResponse<T> = ActionResponseId & (T extends void ? object : { return: T });
 
@@ -70,16 +63,6 @@ export class SafeTaskRunner<T extends WorkerConstructor> {
       this.pendingActions.push({ requestId, type: 'upload', resolver });
 
       this.instance.postMessage({ requestId, type: 'upload', async, name, parameters, sourceCode });
-    });
-  }
-
-  async unload(name: string): Promise<boolean> {
-    return new Promise<boolean>((resolver) => {
-      const requestId = this.requestId();
-
-      this.pendingActions.push({ requestId, type: 'unload', resolver });
-
-      this.instance.postMessage({ requestId, type: 'unload', name });
     });
   }
 
@@ -149,7 +132,7 @@ export class SafeTaskRunner<T extends WorkerConstructor> {
 
     const action = this.pendingActions[actionIdx];
 
-    if (action.type === 'upload' || action.type === 'unload') {
+    if (action.type === 'upload') {
       action.resolver(response.return as boolean);
     } else if (action.type === 'execute') {
       clearTimeout(action.timeoutTimer);

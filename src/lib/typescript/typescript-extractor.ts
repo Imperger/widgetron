@@ -13,6 +13,17 @@ interface ButtonDescriptor {
   endLineNumber: number;
 }
 
+export interface FunctionDeclarationParameter {
+  name: string;
+  type: string;
+}
+
+export interface FunctionDeclaration {
+  name: string;
+  parameters: FunctionDeclarationParameter[];
+  returnType: string;
+}
+
 export class TypescriptExtractor {
   static functionBody(sourceFile: ts.SourceFile, functionName: string): FunctionBody | null {
     function findFunctionBody(node: ts.Node): FunctionBody | null {
@@ -88,16 +99,30 @@ export class TypescriptExtractor {
     return properties;
   }
 
-  static globalScopeFunctionNames(sourceFile: ts.SourceFile): string[] {
-    const functions: string[] = [];
+  static globalScopeFunctionsInfo(sourceFile: ts.SourceFile): FunctionDeclaration[] {
+    const functionsInfo: FunctionDeclaration[] = [];
 
     ts.forEachChild(sourceFile, (node) => {
       if (ts.isFunctionDeclaration(node) && node.name) {
-        functions.push(node.name.text);
+        const name = node.name.text;
+
+        const parameters = node.parameters.map((param) => {
+          const paramName = param.name.getText();
+          const paramType = param.type ? param.type.getText() : 'any';
+          return { name: paramName, type: paramType };
+        });
+
+        const returnType = node.type ? node.type.getText() : 'any';
+
+        functionsInfo.push({
+          name,
+          parameters,
+          returnType,
+        });
       }
     });
 
-    return functions;
+    return functionsInfo;
   }
 
   static findButtonsInUIInput(tree: ts.SourceFile): ButtonDescriptor[] {

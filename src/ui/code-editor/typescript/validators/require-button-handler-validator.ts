@@ -12,7 +12,9 @@ export function requireButtonClickHandlerValidator() {
       return [];
     }
 
-    const globalScopeFunctions = TypescriptExtractor.globalScopeFunctionNames(tree);
+    const globalScopeFunctions = TypescriptExtractor.globalScopeFunctionsInfo(tree).map(
+      (x) => x.name,
+    );
 
     return buttons
       .filter((x) => !globalScopeFunctions.includes(NamingConvention.onClick(x.id)))

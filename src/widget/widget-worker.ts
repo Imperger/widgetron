@@ -6,6 +6,7 @@ import AppDb from '@/db/app-db';
 import { autovivify, isUndefined } from '@/lib/autovivify';
 import type { Screenshot, ScreenshotFormat } from '@/lib/capture-screenshot';
 import { FixedQueue } from '@/lib/fixed-queue';
+import { LinkedFunctionSet } from '@/lib/linked-function-set';
 
 interface UploadCodeMessage {
   type: 'upload';
@@ -14,12 +15,6 @@ interface UploadCodeMessage {
   async: boolean;
   name: string;
   parameters: string[];
-}
-
-interface UnloadCodeMessage {
-  type: 'unload';
-  requestId: number;
-  name: string;
 }
 
 type FunctionName = string;
@@ -35,27 +30,25 @@ interface CaptureScreenshot extends Screenshot {
   args: [ScreenshotFormat];
 }
 
-type IncomingMessage = UploadCodeMessage | UnloadCodeMessage | ExecuteMessage | CaptureScreenshot;
-
-interface ExtraType {
-  type: unknown;
-  name: string;
+interface SetGlobalScopeFunctionNames {
+  type: 'setGlobalScopeFunctionNames';
+  requestId: number;
+  args: [string[]];
 }
 
-type Callable = (...args: unknown[]) => unknown;
-
-interface FunctionRecord {
-  name: string;
-  parameters: string[];
-  fn: Callable;
-}
+type IncomingMessage =
+  | UploadCodeMessage
+  | ExecuteMessage
+  | CaptureScreenshot
+  | SetGlobalScopeFunctionNames;
 
 type ArgumentName = string;
 type Argument<T = unknown> = [ArgumentName, T];
 
 const db = new AppDb();
 
-const functionRegistry: FunctionRecord[] = [];
+let functionRegistry = new LinkedFunctionSet();
+const parametersCache = new Map<string, string[]>();
 
 const emitAction = (
   action: 'sendMessage' | 'deleteMessage' | 'banUser' | 'captureScreenshot',
@@ -81,29 +74,29 @@ const channelMessagesAfterLastTick = new MessagesAfterLastTick(db);
 const sessionState = autovivify();
 
 self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
-  const extraTypes: ExtraType[] = [{ type: FixedQueue, name: 'FixedQueue' }];
-
   switch (e.data.type) {
     case 'upload':
-      uploadSourceCode(
-        e.data.async,
-        e.data.name,
-        [...e.data.parameters, ...extraTypes.map((x) => x.name)],
-        e.data.sourceCode,
-      );
+      if (functionRegistry.sealed) {
+        functionRegistry = new LinkedFunctionSet();
+      }
+
+      functionRegistry.add(e.data.async, e.data.name, [...e.data.parameters], e.data.sourceCode);
+      parametersCache.set(e.data.name, e.data.parameters);
 
       self.postMessage({ requestId: e.data.requestId, return: true });
       break;
-    case 'unload':
-      self.postMessage({ requestId: e.data.requestId, return: unloadSourceCode(e.data.name) });
-      break;
     case 'execute':
-      const AsyncFunction = async function () {}.constructor;
+      if (!functionRegistry.sealed) {
+        functionRegistry.addDependency('FixedQueue', FixedQueue);
+
+        functionRegistry.compose();
+      }
+
       const [fnName] = e.data.args;
 
-      const fnRecord = functionRegistry.find((x) => x.name === fnName);
+      const fnParameters = parametersCache.get(fnName);
 
-      if (fnRecord === undefined) {
+      if (fnParameters === undefined) {
         throw new Error(`Failed to execute unknown function '${fnName}'`);
       }
 
@@ -114,7 +107,7 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
           emitAction('banUser', bannedUserLogin, expiresIn, reason),
       };
 
-      const incomingArgs = incomingArguments(fnRecord.parameters, e.data);
+      const incomingArgs = incomingArguments(fnParameters, e.data);
 
       const outerAPIArgument = findArgument<Pick<API, 'env' | 'caller'>>('api', incomingArgs)!;
       const outerAPI = outerAPIArgument[1];
@@ -139,26 +132,22 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
 
       outerAPIArgument[1] = api;
 
-      const extraTypesArgs = extraTypes.map((x) => x.type);
-      const knownArgs = [...incomingArgs, ...extraTypes.map((x) => [x.name, x.type] as Argument)];
-      const fnArgs = matchArguments(fnRecord, knownArgs);
-
-      const fn = fnRecord.fn.bind(null, ...fnArgs, ...extraTypesArgs);
+      const fnArgs = matchArguments(fnParameters, incomingArgs);
 
       allMessagesAfterLastTick.enterTick();
       channelMessagesAfterLastTick.enterTick();
 
       let result: unknown = null;
-      if (fn instanceof AsyncFunction) {
-        result = await fn();
-      } else if (fn instanceof Function) {
-        result = fn();
+      if (functionRegistry.isAsync(fnName)) {
+        result = await functionRegistry.call(fnName, ...fnArgs);
+      } else {
+        result = functionRegistry.call(fnName, ...fnArgs);
       }
 
       if (fnName === 'onUpdate') {
         self.postMessage({
           requestId: e.data.requestId,
-          return: { model: result, input: findArgument('input', knownArgs)![1] },
+          return: { model: result, input: findArgument('input', incomingArgs)![1] },
         });
       } else {
         self.postMessage({
@@ -182,37 +171,8 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
   }
 };
 
-function uploadSourceCode(
-  async: boolean,
-  name: string,
-  parameters: string[],
-  sourceCode: string,
-): void {
-  const createFn = async ? async function () {}.constructor : Function;
-
-  const record = { name, parameters, fn: createFn(...parameters, sourceCode) };
-  const fnIdx = functionRegistry.findIndex((x) => x.name === name);
-
-  if (fnIdx === -1) {
-    functionRegistry.push(record);
-  } else {
-    functionRegistry[fnIdx] = record;
-  }
-}
-
-function unloadSourceCode(name: string): boolean {
-  const unloadIdx = functionRegistry.findIndex((x) => x.name === name);
-  if (unloadIdx !== -1) {
-    functionRegistry.splice(unloadIdx, 1);
-
-    return true;
-  }
-
-  return false;
-}
-
-function matchArguments(fnRecord: FunctionRecord, argsRegistry: Argument[]): unknown[] {
-  return fnRecord.parameters.map((p) => {
+function matchArguments(parameters: string[], argsRegistry: Argument[]): unknown[] {
+  return parameters.map((p) => {
     const arg = argsRegistry.find((a) => a[0] === p);
 
     if (arg === undefined) {
