@@ -403,7 +403,6 @@ onUnmounted(() => {
     :min-height="100"
     @close="emit('close')"
     @setFocus="emit('setFocus')"
-    class="floating-widget"
   >
     <div class="ui-input">
       <template v-for="component in uiInputComponents" :key="component.id">
@@ -451,10 +450,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.floating-widget {
-  overflow: hidden;
-}
-
 .ui-input {
   padding: 5px;
   background-color: var(--color-background-base);
