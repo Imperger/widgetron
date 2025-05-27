@@ -39,7 +39,7 @@ async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
 
 ### Session state
 
-Currently, the only two places where user code can be placed and executed are `onUISetup` and `onUpdate`. Defining variables outside of these functions is forbidden:
+Currently, user code can only be placed and executed within functions. Declaring variables or writing code outside of functions is not allowed.
 
 ```ts
 // ❌ Bad: variable defined outside of allowed functions
@@ -213,7 +213,7 @@ async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
 
 ## OnUpdate
 
-`OnUpdate` is the heart of a widget. This function is called each time the widget's view needs to be updated. Usually, it is called once per second, but it can also be triggered when the UI input changes — for example, when the user moves a slider, types in a text input, etc.
+`OnUpdate` is the heart of a widget. This function is called each time the widget's view needs to be updated. Usually, it is called once per second, but it can also be triggered when the UI input changes — for example, when the user moves a slider, types in a text input, press a button, etc.
 
 `OnUpdate` may perform heavy calculations or network requests. To avoid executing such operations every time the user drags a slider or types in a text box, you can use `api.caller` to distinguish the source of the call. It can have two values:
 
