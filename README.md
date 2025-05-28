@@ -496,3 +496,160 @@ async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
   return null;
 }
 ```
+
+### Capturing stream screenshot
+
+The `api.captureScreenshot()` method enables capturing a screenshot of the current stream. The method accepts a single parameter that determines the output format.
+
+- `rgba`: returns a screenshot as a RGBA `Uint8Array`
+- `png`: returns a screenshot as a PNG `Uint8Array`
+
+This example captures periodic screenshots of a Heroes of the Storm match, extracts the game duration and team levels using OCR, and updates the UI with the parsed information. It uses predefined screen regions and Tesseract.js for text recognition.
+
+```ts
+interface UIInput extends OnlyUIInputProperties {}
+
+interface Tesseract {
+  recognize(image: Uint8Array, options: { rectangle: Rect }): Promise<{ data: { text: string } }>;
+}
+
+interface GameRegion {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+interface Rect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+interface LevelRegions {
+  team1: Rect;
+  team2: Rect;
+}
+
+interface OCRRegions {
+  gameRect: GameRegion; // Defines the area of the screen containing the game
+  duration: Rect; // Region to extract game duration
+  level: LevelRegions; // Regions to extract team levels
+}
+
+interface SessionState {
+  ocr: Tesseract; // OCR worker instance
+  gameInfo: string; // Output string with parsed game info
+  regions: OCRRegions; // All predefined regions for OCR
+  recognizerTimer: number;
+}
+
+// Converts a relative Rect to absolute pixel coordinates within a screenshot
+function rectAbs(rect: Rect, screenshot: Screenshot, gameRegion: GameRegion): Rect {
+  const left = gameRegion.left * screenshot.width;
+  const top = gameRegion.top * screenshot.height;
+  const gameWidth = (gameRegion.right - gameRegion.left) * screenshot.width;
+  const gameHeight = (gameRegion.bottom - gameRegion.top) * screenshot.height;
+
+  return {
+    left: left + rect.left * gameWidth,
+    top: top + rect.top * gameHeight,
+    width: rect.width * gameWidth,
+    height: rect.height * gameHeight,
+  };
+}
+
+// Performs OCR recognition within a specific region of a screenshot
+async function recognize(screenshot: Screenshot, region: Rect, state: SessionState) {
+  const result = await state.ocr.recognize(screenshot.image, {
+    rectangle: rectAbs(region, screenshot, state.regions.gameRect),
+  });
+
+  return result.data.text;
+}
+
+// Extracts game-related values (duration and team levels) from screenshot via OCR
+async function getRunningGameInfo(screenshot: Screenshot, state: SessionState) {
+  const duration = (await recognize(screenshot, state.regions.duration, state)).trim();
+  const blueTeamLevel = (await recognize(screenshot, state.regions.level.team1, state)).trim();
+  const redTeamLevel = (await recognize(screenshot, state.regions.level.team2, state)).trim();
+
+  return { duration, blueTeamLevel, redTeamLevel };
+}
+
+// Formats a 4-digit string (e.g., "0930") into a "09:30" time format
+function formatDuration(str: string) {
+  if (str.length === 4) {
+    return `${str.slice(0, 2)}:${str.slice(2, 4)}`;
+  } else {
+    return str;
+  }
+}
+
+// Main loop to continuously capture screenshots and update game info
+async function gameInfoReader(api: API) {
+  // Capture a screenshot in PNG format using the API
+  const screenshot = await api.captureScreenshot('png');
+
+  // If the screenshot is empty, retry later
+  if (screenshot.image.length === 0) {
+    setTimeout(gameInfoReader, 10000);
+    return;
+  }
+
+  // Run OCR recognition on relevant regions
+  const { duration, blueTeamLevel, redTeamLevel } = await getRunningGameInfo(screenshot, api.state);
+
+  // Update state with formatted info
+  api.state.gameInfo = `Duration: ${formatDuration(duration)}\n`;
+  api.state.gameInfo += `Levels: ${blueTeamLevel} x ${redTeamLevel}\n`;
+
+  // Schedule the next update in 5 seconds
+  api.state.recognizerTimer = setTimeout(() => gameInfoReader(api), 5000);
+}
+
+// Initializes OCR engine, region data, and starts info reader loop
+async function onUISetup(api: API): Promise<UIInput> {
+  // Load Tesseract.js from CDN
+  importScripts('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
+
+  // Initialize state
+  api.state.ocr = null;
+  api.state.gameInfo = '';
+  api.state.recognizerTimer = -1;
+
+  // Define OCR regions using normalized coordinates
+  api.state.regions = {
+    gameRect: { left: 0, top: 0, right: 1, bottom: 1 },
+    duration: { left: 0.48646, top: 0, width: 0.0265625, height: 0.01574 },
+    level: {
+      team1: { left: 0.449479, top: 0.0212, width: 0.0458, height: 0.04167 },
+      team2: { left: 0.503646, top: 0.0212, width: 0.0458, height: 0.04167 },
+    },
+  };
+
+  // Initialize Tesseract OCR worker
+  (self as any).Tesseract.createWorker('eng').then(async (worker) => {
+    api.state.ocr = worker;
+
+    await worker.setParameters({
+      tessedit_char_whitelist: '0123456789', // Restrict to digits
+    });
+
+    // Start reading game info
+    gameInfoReader(api);
+  });
+
+  return {};
+}
+
+// Provides current game info as widget output
+async function onUpdate(input: UIInput, api: API): Promise<WidgetModel> {
+  return api.state.gameInfo;
+}
+
+async function onDestroy(input: UIInput, api: API): Promise<void> {
+  clearTimeout(api.state.recognizerTimer);
+}
+```
