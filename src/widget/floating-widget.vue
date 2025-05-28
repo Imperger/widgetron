@@ -2,7 +2,7 @@
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import * as ts from 'typescript';
-import { computed, inject, onMounted, onUnmounted, ref, toRaw, watch } from 'vue';
+import { computed, inject, onUnmounted, ref, toRaw, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 import type { Environment, EnvironmentChannel } from './api/environment';
@@ -105,7 +105,7 @@ const uiInput = ref<OnlyUIInputPropertiesWithType | null>(null);
 
 const model = ref<WidgetModel | null>(null);
 
-const worker = new SafeTaskRunner(WidgetWorker);
+let worker: SafeTaskRunner<typeof WidgetWorker> | null = null;
 
 let unmounted = false;
 let isRunning = false;
@@ -133,7 +133,9 @@ const actionListener = async (action: Action) => {
           height: 0,
         };
 
-        worker.postMessage({ type: 'captureScreenshot', ...screenshot }, [screenshot.image.buffer]);
+        worker!.postMessage({ type: 'captureScreenshot', ...screenshot }, [
+          screenshot.image.buffer,
+        ]);
       }
       break;
   }
@@ -184,7 +186,7 @@ const uploadCode = async (
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
 
-  const uploaded = await worker.upload(functionBody.async, fnName, parameters, functionBodyJs);
+  const uploaded = await worker!.upload(functionBody.async, fnName, parameters, functionBodyJs);
 
   if (!uploaded) {
     return false;
@@ -197,7 +199,7 @@ const setupUIInput = async (sourceFile: ts.SourceFile) => {
   const properties = TypescriptExtractor.interfaceProperties(sourceFile, 'UIInput');
 
   const uiInputTemplate = reinterpret_cast<OnlyUIInputProperties>(
-    await worker.execute({
+    await worker!.execute({
       name: 'onUISetup',
       args: [{ env: collectEnvironment(), caller: 'system' }],
     }),
@@ -213,8 +215,6 @@ const setupGlobalScopeFunctions = async (
   sourceFile: ts.SourceFile,
 ): Promise<FunctionDeclaration[]> => {
   const globalScopeFunctionsInfo = TypescriptExtractor.globalScopeFunctionsInfo(sourceFile);
-
-  hasOnDestroy = false;
 
   for (const fn of globalScopeFunctionsInfo) {
     if (fn.name === 'onDestroy') {
@@ -234,7 +234,7 @@ const setupGlobalScopeFunctions = async (
 const resetWidget = async () => {
   if (hasOnDestroy) {
     try {
-      await worker.execute({
+      await worker!.execute({
         name: 'onDestroy',
         args: [toRaw(uiInput.value), { env: collectEnvironment(), caller: 'system' }],
       });
@@ -242,12 +242,22 @@ const resetWidget = async () => {
       console.error(e);
     }
   }
+
+  hasOnDestroy = false;
+
+  actionListenerUnsub?.();
+
+  worker?.terminate();
 };
 
 const setup = async () => {
-  const sourceFile = ts.createSourceFile('main.ts', sourceCode, ts.ScriptTarget.Latest, true);
-
   await resetWidget();
+
+  worker = new SafeTaskRunner(WidgetWorker);
+
+  actionListenerUnsub = worker.subscribeToUnrecognizedMessages<Action>(actionListener);
+
+  const sourceFile = ts.createSourceFile('main.ts', sourceCode, ts.ScriptTarget.Latest, true);
 
   const globalScopeFunctions = await setupGlobalScopeFunctions(sourceFile);
   sendChatMessageTransformerUnsub?.();
@@ -259,7 +269,7 @@ const setup = async () => {
         const patched: SendChatMessageRequest = JSON.parse(JSON.stringify(x));
 
         try {
-          const transformed = (await worker.execute(
+          const transformed = (await worker!.execute(
             {
               name: 'onBeforeMessageSend',
               args: [
@@ -331,7 +341,7 @@ const onExecute = async (outOfOrder: boolean) => {
   try {
     const inputBeforeExecution = JSON.parse(JSON.stringify(toRaw(uiInput.value)));
     const result = reinterpret_cast<UpdateResult>(
-      await worker.execute({
+      await worker!.execute({
         name: 'onUpdate',
         args: [
           toRaw(uiInput.value),
@@ -404,7 +414,7 @@ const updateSlider = async (slider: UISliderInput, value: number) => {
 };
 
 const executeButtonClick = async (id: string) => {
-  await worker.execute({
+  await worker!.execute({
     name: NamingConvention.onClick(id),
     args: [toRaw(uiInput.value), { env: collectEnvironment(), caller: 'event' }],
   });
@@ -415,19 +425,14 @@ const executeButtonClick = async (id: string) => {
 const buttonStyle = ({ type: _, id: _0, caption: _1, ...style }: IdentifiedUIComponent<UIButton>) =>
   style;
 
-onMounted(() => {
-  actionListenerUnsub = worker.subscribeToUnrecognizedMessages<Action>(actionListener);
-});
-
 onUnmounted(async () => {
   unmounted = true;
 
   await resetWidget();
 
-  actionListenerUnsub?.();
   sendChatMessageTransformerUnsub?.();
 
-  worker.terminate();
+  worker!.terminate();
 });
 </script>
 

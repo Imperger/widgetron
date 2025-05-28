@@ -6,7 +6,9 @@ import AppDb from '@/db/app-db';
 import { autovivify, isUndefined } from '@/lib/autovivify';
 import type { Screenshot, ScreenshotFormat } from '@/lib/capture-screenshot';
 import { FixedQueue } from '@/lib/fixed-queue';
-import { LinkedFunctionSet } from '@/lib/linked-function-set';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyFunction = (...args: any[]) => any;
 
 interface UploadCodeMessage {
   type: 'upload';
@@ -47,7 +49,6 @@ type Argument<T = unknown> = [ArgumentName, T];
 
 const db = new AppDb();
 
-let functionRegistry = new LinkedFunctionSet();
 const parametersCache = new Map<string, string[]>();
 
 const emitAction = (
@@ -71,34 +72,33 @@ async function captureScreenshot(type: ScreenshotFormat): Promise<Screenshot> {
 const allMessagesAfterLastTick = new MessagesAfterLastTick(db);
 const channelMessagesAfterLastTick = new MessagesAfterLastTick(db);
 
-let sessionState = autovivify();
+const sessionState = autovivify();
+
+const AsyncFunction = async function () {}.constructor;
+
+Object.defineProperty(self, 'FixedQueue', {
+  value: FixedQueue,
+  writable: true,
+  enumerable: true,
+  configurable: true,
+});
 
 self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
   switch (e.data.type) {
     case 'upload':
-      if (functionRegistry.sealed) {
-        functionRegistry = new LinkedFunctionSet();
-      }
+      defineFunction(e.data.async, e.data.name, [...e.data.parameters], e.data.sourceCode);
 
-      functionRegistry.add(e.data.async, e.data.name, [...e.data.parameters], e.data.sourceCode);
       parametersCache.set(e.data.name, e.data.parameters);
 
       self.postMessage({ requestId: e.data.requestId, return: true });
       break;
     case 'execute':
-      if (!functionRegistry.sealed) {
-        functionRegistry.addDependency('FixedQueue', FixedQueue);
-
-        functionRegistry.compose();
-
-        sessionState = autovivify();
-      }
-
       const [fnName] = e.data.args;
 
+      const fn: AnyFunction = Reflect.get(self, fnName);
       const fnParameters = parametersCache.get(fnName);
 
-      if (fnParameters === undefined) {
+      if (fn === undefined || fnParameters === undefined) {
         throw new Error(`Failed to execute unknown function '${fnName}'`);
       }
 
@@ -112,10 +112,10 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
       channelMessagesAfterLastTick.enterTick();
 
       let result: unknown = null;
-      if (functionRegistry.isAsync(fnName)) {
-        result = await functionRegistry.call(fnName, ...fnArgs);
-      } else {
-        result = functionRegistry.call(fnName, ...fnArgs);
+      if (fn instanceof AsyncFunction) {
+        result = await fn(...fnArgs);
+      } else if (fn instanceof Function) {
+        result = fn(...fnArgs);
       }
 
       if (fnName === 'onUpdate') {
@@ -198,4 +198,20 @@ function assembleAPIArgument(incomingArgs: Argument<unknown>[]): void {
   };
 
   outerAPIArgument[1] = api;
+}
+
+function defineFunction(
+  async: boolean,
+  name: string,
+  parameters: string[],
+  sourceCode: string,
+): void {
+  const createFn = async ? AsyncFunction : Function;
+
+  Object.defineProperty(self, name, {
+    value: createFn(...parameters, sourceCode),
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
 }
