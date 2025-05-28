@@ -122,6 +122,7 @@ const spawnWidgetEditor = async (id?: number) => {
         ['UIInput', 'API', 'string'],
         'Promise<string>',
       ),
+      optionalFunctionValidator('onDestroy', ['UIInput', 'API'], 'Promise<void>'),
       requireButtonClickHandlerValidator(),
     ],
     onInitialized,

@@ -109,6 +109,7 @@ const worker = new SafeTaskRunner(WidgetWorker);
 
 let unmounted = false;
 let isRunning = false;
+let hasOnDestroy = false;
 
 let actionListenerUnsub: ExternalMessageListenerUnsubscriber | null = null;
 let sendChatMessageTransformerUnsub: GQLInterceptorListenerUnsubscriber | null = null;
@@ -213,7 +214,13 @@ const setupGlobalScopeFunctions = async (
 ): Promise<FunctionDeclaration[]> => {
   const globalScopeFunctionsInfo = TypescriptExtractor.globalScopeFunctionsInfo(sourceFile);
 
+  hasOnDestroy = false;
+
   for (const fn of globalScopeFunctionsInfo) {
+    if (fn.name === 'onDestroy') {
+      hasOnDestroy = true;
+    }
+
     await uploadCode(
       fn.name,
       fn.parameters.map((x) => x.name),
@@ -224,8 +231,23 @@ const setupGlobalScopeFunctions = async (
   return globalScopeFunctionsInfo;
 };
 
+const resetWidget = async () => {
+  if (hasOnDestroy) {
+    try {
+      await worker.execute({
+        name: 'onDestroy',
+        args: [toRaw(uiInput.value), { env: collectEnvironment(), caller: 'system' }],
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  }
+};
+
 const setup = async () => {
   const sourceFile = ts.createSourceFile('main.ts', sourceCode, ts.ScriptTarget.Latest, true);
+
+  await resetWidget();
 
   const globalScopeFunctions = await setupGlobalScopeFunctions(sourceFile);
   sendChatMessageTransformerUnsub?.();
@@ -397,8 +419,10 @@ onMounted(() => {
   actionListenerUnsub = worker.subscribeToUnrecognizedMessages<Action>(actionListener);
 });
 
-onUnmounted(() => {
+onUnmounted(async () => {
   unmounted = true;
+
+  await resetWidget();
 
   actionListenerUnsub?.();
   sendChatMessageTransformerUnsub?.();
