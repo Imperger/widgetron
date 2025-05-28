@@ -102,37 +102,9 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
         throw new Error(`Failed to execute unknown function '${fnName}'`);
       }
 
-      const action: Action = {
-        sendMessage: (text: string) => emitAction('sendMessage', text),
-        deleteMessage: (messageId: string) => emitAction('deleteMessage', messageId),
-        banUser: (bannedUserLogin: string, expiresIn: string, reason = '') =>
-          emitAction('banUser', bannedUserLogin, expiresIn, reason),
-      };
-
       const incomingArgs = incomingArguments(fnParameters, e.data);
 
-      const outerAPIArgument = findArgument<Pick<API, 'env' | 'caller'>>('api', incomingArgs)!;
-      const outerAPI = outerAPIArgument[1];
-
-      const apiMethods = {
-        allMessagesAfterLastTick: () => allMessagesAfterLastTick.call(() => true),
-        channelMessagesAfterLastTick: () =>
-          channelMessagesAfterLastTick.call(
-            (x) => x.roomDisplayName === outerAPI.env.channel?.name,
-          ),
-        isUndefined,
-        captureScreenshot,
-      };
-
-      const api: API = {
-        ...outerAPI,
-        db,
-        action,
-        ...apiMethods,
-        state: sessionState,
-      };
-
-      outerAPIArgument[1] = api;
+      assembleAPIArgument(incomingArgs);
 
       const fnArgs = matchArguments(fnParameters, incomingArgs);
 
@@ -191,4 +163,39 @@ function incomingArguments(parameters: string[], msg: ExecuteMessage): Argument[
 
 function findArgument<T = unknown>(name: string, knownArguments: Argument[]): Argument<T> | null {
   return (knownArguments.find((x) => x[0] === name) as Argument<T>) ?? null;
+}
+
+function assembleAPIArgument(incomingArgs: Argument<unknown>[]): void {
+  const action: Action = {
+    sendMessage: (text: string) => emitAction('sendMessage', text),
+    deleteMessage: (messageId: string) => emitAction('deleteMessage', messageId),
+    banUser: (bannedUserLogin: string, expiresIn: string, reason = '') =>
+      emitAction('banUser', bannedUserLogin, expiresIn, reason),
+  };
+
+  const outerAPIArgument = findArgument<Pick<API, 'env' | 'caller'>>('api', incomingArgs);
+
+  if (outerAPIArgument === null) {
+    return;
+  }
+
+  const outerAPI = outerAPIArgument[1];
+
+  const apiMethods = {
+    allMessagesAfterLastTick: () => allMessagesAfterLastTick.call(() => true),
+    channelMessagesAfterLastTick: () =>
+      channelMessagesAfterLastTick.call((x) => x.roomDisplayName === outerAPI.env.channel?.name),
+    isUndefined,
+    captureScreenshot,
+  };
+
+  const api: API = {
+    ...outerAPI,
+    db,
+    action,
+    ...apiMethods,
+    state: sessionState,
+  };
+
+  outerAPIArgument[1] = api;
 }
