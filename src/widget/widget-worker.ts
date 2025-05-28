@@ -71,7 +71,7 @@ async function captureScreenshot(type: ScreenshotFormat): Promise<Screenshot> {
 const allMessagesAfterLastTick = new MessagesAfterLastTick(db);
 const channelMessagesAfterLastTick = new MessagesAfterLastTick(db);
 
-const sessionState = autovivify();
+let sessionState = autovivify();
 
 self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
   switch (e.data.type) {
@@ -90,6 +90,8 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
         functionRegistry.addDependency('FixedQueue', FixedQueue);
 
         functionRegistry.compose();
+
+        sessionState = autovivify();
       }
 
       const [fnName] = e.data.args;
