@@ -1,5 +1,7 @@
 import type { BanUserRequest } from './gql/types/ban-user-request';
 import type { BanUserResponse } from './gql/types/ban-user-response';
+import type { ChannelShellRequest } from './gql/types/channel-shell-request';
+import type { ChannelShellResponse } from './gql/types/channel-shell-response';
 import type { ChatLoginModerationTrackingRequest } from './gql/types/chat-login-moderation-tracking';
 import type { DeleteChatMessageRequest } from './gql/types/delete-chat-message-request';
 import type { DeleteChatMessageResponse } from './gql/types/delete-chat-message-response';
@@ -11,6 +13,9 @@ import {
 } from './gql/types/gql-response';
 import type { SendChatMessageRequest } from './gql/types/send-chat-message-request';
 import type { UseLiveResponse } from './gql/types/use-live-response';
+import type { ViewerCardRequest } from './gql/types/viewer-card-request';
+import type { ViewerCardResponse } from './gql/types/viewer-card-response';
+import type { ViewerChannelRelationship } from './viewer-channel-relationship';
 
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
 import type {
@@ -41,6 +46,8 @@ export class TwitchInteractor implements FetchInterceptorListener {
 
   private currentChannelId = '';
 
+  private loginChannelIdCache = new Map<string, string>();
+
   constructor(fetchInterceptor: FetchInterceptor, gqlInterceptor: GQLInterceptor) {
     this.fetchUnsub = fetchInterceptor.subscribe(this);
 
@@ -61,6 +68,16 @@ export class TwitchInteractor implements FetchInterceptorListener {
 
     this.knownPersistentQuery.set('Chat_BanUserFromChatRoom', {
       sha256Hash: 'd7be2d2e1e22813c1c2f3d9d5bf7e425d815aeb09e14001a5f2c140b93f6fb67',
+      version: 1,
+    });
+
+    this.knownPersistentQuery.set('ChannelShell', {
+      sha256Hash: 'ed6f189ff99548947a3b5acf9410ec69d7f8d4718a534d01ea0d00aa7662f2eb',
+      version: 1,
+    });
+
+    this.knownPersistentQuery.set('ViewerCard', {
+      sha256Hash: '80c53fe04c79a6414484104ea573c28d6a8436e031a235fc6908de63f51c74fd',
       version: 1,
     });
 
@@ -166,6 +183,68 @@ export class TwitchInteractor implements FetchInterceptorListener {
     await this.gqlQuery(modTrackingQuery);
 
     return true;
+  }
+
+  async relationship(viewer: string, channel: string): Promise<ViewerChannelRelationship | null> {
+    if (!this.isReady) {
+      return null;
+    }
+
+    let channelId = this.loginChannelIdCache.get(channel);
+
+    if (channelId === undefined) {
+      const query: GQLRequest<ChannelShellRequest> = {
+        operationName: 'ChannelShell',
+        extensions: { persistedQuery: this.knownPersistentQuery.get('ChannelShell')! },
+        variables: { isDVR: false, login: channel },
+      };
+
+      const channelShellResponse = await this.gqlQuery<ChannelShellResponse>(query);
+
+      if (channelShellResponse === null || isGQLErrorResponse(channelShellResponse)) {
+        return null;
+      }
+
+      channelId = channelShellResponse.data.userOrError.id;
+
+      this.loginChannelIdCache.set(channel, channelId);
+    }
+
+    const query: GQLRequest<ViewerCardRequest> = {
+      operationName: 'ViewerCard',
+      extensions: { persistedQuery: this.knownPersistentQuery.get('ViewerCard')! },
+      variables: {
+        badgeSourceChannelID: channelId,
+        badgeSourceChannelLogin: channel,
+        channelID: channelId,
+        channelLogin: channel,
+        giftRecipientLogin: viewer,
+        hasChannelID: true,
+        isViewerBadgeCollectionEnabled: true,
+        withStandardGifting: true,
+      },
+    };
+
+    const viewerCardResponse = await this.gqlQuery<ViewerCardResponse>(query);
+
+    if (viewerCardResponse === null || isGQLErrorResponse(viewerCardResponse)) {
+      return null;
+    }
+
+    const rel = viewerCardResponse.data.targetUser.relationship;
+
+    return {
+      followedAt: rel.followedAt ? new Date(rel.followedAt) : null,
+      totalSubscribedMonths: rel.cumulativeTenure?.months ?? 0,
+      subscriptionDaysRemaining: rel.cumulativeTenure?.daysRemaining ?? 0,
+      subscription: rel.subscriptionBenefit
+        ? {
+            isGift: rel.subscriptionBenefit.gift.isGift,
+            purchasedWithPrime: rel.subscriptionBenefit.purchasedWithPrime,
+            tier: rel.subscriptionBenefit.tier,
+          }
+        : null,
+    };
   }
 
   async onResponse(req: FetchInterceptorRequest, _res: Response): Promise<boolean> {

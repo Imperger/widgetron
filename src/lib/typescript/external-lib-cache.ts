@@ -152,6 +152,13 @@ export class ExternalLibCache {
       );
 
       ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
+        'screenshot.ts',
+        import.meta.glob('/src/twitch/viewer-channel-relationship.ts', { as: 'raw' }),
+        [],
+        ['remove-export'],
+      );
+
+      ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
         'api.ts',
         import.meta.glob('/src/widget/api/api.ts', { as: 'raw' }),
         [

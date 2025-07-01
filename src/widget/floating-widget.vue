@@ -88,7 +88,17 @@ interface CaptureScreenshotAction {
   args: [ScreenshotFormat];
 }
 
-type Action = SendMessageAction | DeleteMessageAction | BanUserAction | CaptureScreenshotAction;
+interface RelationshipAction {
+  action: 'relationship';
+  args: [string, string];
+}
+
+type Action =
+  | SendMessageAction
+  | DeleteMessageAction
+  | BanUserAction
+  | CaptureScreenshotAction
+  | RelationshipAction;
 
 const { label = '', updatePeriod, sourceCode } = defineProps<WidgetProps>();
 
@@ -137,6 +147,20 @@ const actionListener = async (action: Action) => {
           screenshot.image.buffer,
         ]);
       }
+      break;
+    case 'relationship':
+      const rel = await twitchInteractor?.relationship(...action.args);
+
+      worker!.postMessage(
+        {
+          type: 'relationship',
+          relationship: rel,
+          viewer: action.args[0],
+          channel: action.args[1],
+        },
+        [],
+      );
+
       break;
   }
 };

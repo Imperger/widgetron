@@ -3,6 +3,7 @@ import type { Environment } from './environment';
 
 import type AppDB from '@/db/app-db';
 import type { Screenshot } from '@/lib/capture-screenshot';
+import type { ViewerChannelRelationship } from '@/twitch/viewer-channel-relationship';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface SessionState {}
@@ -35,4 +36,5 @@ export interface API {
   allMessagesAfterLastTick(): Promise<ChatMessage[]>;
   isUndefined(x: unknown): boolean;
   captureScreenshot(type: 'rgba' | 'png'): Promise<Screenshot>;
+  relationship(viewer: string, channel: string): Promise<ViewerChannelRelationship | null>;
 }

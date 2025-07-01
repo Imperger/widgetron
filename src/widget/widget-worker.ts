@@ -6,6 +6,7 @@ import AppDb from '@/db/app-db';
 import { autovivify, isUndefined } from '@/lib/autovivify';
 import type { Screenshot, ScreenshotFormat } from '@/lib/capture-screenshot';
 import { FixedQueue } from '@/lib/fixed-queue';
+import type { ViewerChannelRelationship } from '@/twitch/viewer-channel-relationship';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyFunction = (...args: any[]) => any;
@@ -38,11 +39,21 @@ interface SetGlobalScopeFunctionNames {
   args: [string[]];
 }
 
+interface Relationship {
+  type: 'relationship';
+  requestId: number;
+  relationship: ViewerChannelRelationship;
+  viewer: string;
+  channel: string;
+  args: [string, string];
+}
+
 type IncomingMessage =
   | UploadCodeMessage
   | ExecuteMessage
   | CaptureScreenshot
-  | SetGlobalScopeFunctionNames;
+  | SetGlobalScopeFunctionNames
+  | Relationship;
 
 type ArgumentName = string;
 type Argument<T = unknown> = [ArgumentName, T];
@@ -52,7 +63,7 @@ const db = new AppDb();
 const parametersCache = new Map<string, string[]>();
 
 const emitAction = (
-  action: 'sendMessage' | 'deleteMessage' | 'banUser' | 'captureScreenshot',
+  action: 'sendMessage' | 'deleteMessage' | 'banUser' | 'captureScreenshot' | 'relationship',
   ...args: unknown[]
 ) => self.postMessage({ action, args });
 
@@ -66,6 +77,27 @@ async function captureScreenshot(type: ScreenshotFormat): Promise<Screenshot> {
     captureScreenshotResolver = resolve;
 
     emitAction('captureScreenshot', type);
+  });
+}
+
+type RelationshipResolver = (relationship: ViewerChannelRelationship | null) => void;
+
+interface RelationshipPendingBlock {
+  resolver: RelationshipResolver;
+  viewer: string;
+  channel: string;
+}
+
+const relationshipResolver: RelationshipPendingBlock[] = [];
+
+async function relationship(
+  viewer: string,
+  channel: string,
+): Promise<ViewerChannelRelationship | null> {
+  return new Promise((resolver) => {
+    relationshipResolver.push({ viewer, channel, resolver });
+
+    emitAction('relationship', viewer, channel);
   });
 }
 
@@ -142,6 +174,18 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
       });
       captureScreenshotResolver = null;
       break;
+    case 'relationship':
+      const viewer = e.data.viewer;
+      const channel = e.data.channel;
+
+      const blockIdx = relationshipResolver.findIndex(
+        (x) => x.viewer === viewer && x.channel === channel,
+      );
+
+      relationshipResolver[blockIdx].resolver(e.data.relationship);
+
+      relationshipResolver.splice(blockIdx, 1);
+      break;
   }
 };
 
@@ -187,6 +231,7 @@ function assembleAPIArgument(incomingArgs: Argument<unknown>[]): void {
       channelMessagesAfterLastTick.call((x) => x.roomDisplayName === outerAPI.env.channel?.name),
     isUndefined,
     captureScreenshot,
+    relationship,
   };
 
   const api: API = {
