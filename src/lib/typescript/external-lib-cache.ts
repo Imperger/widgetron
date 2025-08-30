@@ -152,7 +152,7 @@ export class ExternalLibCache {
       );
 
       ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
-        'screenshot.ts',
+        'viewer-channel-relationship.ts',
         import.meta.glob('/src/twitch/viewer-channel-relationship.ts', { as: 'raw' }),
         [],
         ['remove-export'],
