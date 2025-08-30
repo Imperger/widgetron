@@ -1,7 +1,7 @@
 {
   "name": "Widgetron",
   "description": "Widgetron shows follow dates, keeps deleted messages, and lets you build custom Twitch widgets with a built-in code editor.",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "manifest_version": 3,
   "action": {
     "default_icon": {
