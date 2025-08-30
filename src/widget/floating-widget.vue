@@ -31,6 +31,7 @@ import {
 } from '@/injection-tokens';
 import { captureScreenshot, type ScreenshotFormat } from '@/lib/capture-screenshot';
 import { JsonObjectComparator, type JSONObject } from '@/lib/json-object-equal';
+import { playAudio } from '@/lib/play-audio';
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
 import { SafeTaskRunner, type ExternalMessageListenerUnsubscriber } from '@/lib/safe-task-runner';
 import {
@@ -93,12 +94,19 @@ interface RelationshipAction {
   args: [string, string];
 }
 
+interface PlayAudio {
+  action: 'playAudio';
+  requestId: number;
+  args: [number, string];
+}
+
 type Action =
   | SendMessageAction
   | DeleteMessageAction
   | BanUserAction
   | CaptureScreenshotAction
-  | RelationshipAction;
+  | RelationshipAction
+  | PlayAudio;
 
 const { label = '', updatePeriod, sourceCode } = defineProps<WidgetProps>();
 
@@ -161,6 +169,18 @@ const actionListener = async (action: Action) => {
         [],
       );
 
+      break;
+    case 'playAudio':
+      const success = await playAudio(action.args[1]);
+
+      worker!.postMessage(
+        {
+          type: 'playAudio',
+          requestId: action.args[0],
+          success,
+        },
+        [],
+      );
       break;
   }
 };

@@ -48,12 +48,19 @@ interface Relationship {
   args: [string, string];
 }
 
+interface PlayAudio {
+  type: 'playAudio';
+  requestId: number;
+  success: boolean;
+}
+
 type IncomingMessage =
   | UploadCodeMessage
   | ExecuteMessage
   | CaptureScreenshot
   | SetGlobalScopeFunctionNames
-  | Relationship;
+  | Relationship
+  | PlayAudio;
 
 type ArgumentName = string;
 type Argument<T = unknown> = [ArgumentName, T];
@@ -63,7 +70,13 @@ const db = new AppDb();
 const parametersCache = new Map<string, string[]>();
 
 const emitAction = (
-  action: 'sendMessage' | 'deleteMessage' | 'banUser' | 'captureScreenshot' | 'relationship',
+  action:
+    | 'sendMessage'
+    | 'deleteMessage'
+    | 'banUser'
+    | 'captureScreenshot'
+    | 'relationship'
+    | 'playAudio',
   ...args: unknown[]
 ) => self.postMessage({ action, args });
 
@@ -98,6 +111,27 @@ async function relationship(
     relationshipResolver.push({ viewer, channel, resolver });
 
     emitAction('relationship', viewer, channel);
+  });
+}
+
+type PlayAudioResolver = (success: boolean) => void;
+
+interface PlayAudioResolverBlock {
+  resolver: PlayAudioResolver;
+  requestId: number;
+}
+
+let nextPlayAudioRequestId = 1;
+
+const playAudioResolver: PlayAudioResolverBlock[] = [];
+
+async function playAudio(url: string): Promise<boolean> {
+  return new Promise((resolver) => {
+    const requestId = nextPlayAudioRequestId++;
+
+    playAudioResolver.push({ requestId, resolver });
+
+    emitAction('playAudio', requestId, url);
   });
 }
 
@@ -174,7 +208,7 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
       });
       captureScreenshotResolver = null;
       break;
-    case 'relationship':
+    case 'relationship': {
       const viewer = e.data.viewer;
       const channel = e.data.channel;
 
@@ -186,6 +220,17 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
 
       relationshipResolver.splice(blockIdx, 1);
       break;
+    }
+    case 'playAudio': {
+      const requestId = e.data.requestId;
+
+      const blockIdx = playAudioResolver.findIndex((x) => x.requestId === requestId);
+
+      playAudioResolver[blockIdx].resolver(e.data.success);
+
+      playAudioResolver.splice(blockIdx, 1);
+      break;
+    }
   }
 };
 
@@ -232,6 +277,7 @@ function assembleAPIArgument(incomingArgs: Argument<unknown>[]): void {
     isUndefined,
     captureScreenshot,
     relationship,
+    playAudio,
   };
 
   const api: API = {
