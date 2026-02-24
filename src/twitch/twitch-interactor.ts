@@ -13,8 +13,11 @@ import {
 } from './gql/types/gql-response';
 import type { SendChatMessageRequest } from './gql/types/send-chat-message-request';
 import type { UseLiveResponse } from './gql/types/use-live-response';
+import type { UserFollowedChannels } from './gql/types/user-followed-channels-request';
+import type { UserFollowedChannelsResponse } from './gql/types/user-followed-channels-response';
 import type { ViewerCardRequest } from './gql/types/viewer-card-request';
 import type { ViewerCardResponse } from './gql/types/viewer-card-response';
+import type { UserFollowedChannel } from './user-followed-channel';
 import type { ViewerChannelRelationship } from './viewer-channel-relationship';
 
 import { reinterpret_cast } from '@/lib/reinterpret-cast';
@@ -78,6 +81,11 @@ export class TwitchInteractor implements FetchInterceptorListener {
 
     this.knownPersistentQuery.set('ViewerCard', {
       sha256Hash: '80c53fe04c79a6414484104ea573c28d6a8436e031a235fc6908de63f51c74fd',
+      version: 1,
+    });
+
+    this.knownPersistentQuery.set('ChannelFollows', {
+      sha256Hash: 'eecf815273d3d949e5cf0085cc5084cd8a1b5b7b6f7990cf43cb0beadf546907',
       version: 1,
     });
 
@@ -245,6 +253,72 @@ export class TwitchInteractor implements FetchInterceptorListener {
           }
         : null,
     };
+  }
+
+  async userFollowedChannels(login: string): Promise<UserFollowedChannel[] | null> {
+    if (!this.isReady) {
+      return null;
+    }
+
+    const query: GQLRequest<UserFollowedChannels> = {
+      operationName: 'ChannelFollows',
+      extensions: { persistedQuery: this.knownPersistentQuery.get('ChannelFollows')! },
+      variables: {
+        limit: 100,
+        login,
+        order: 'DESC',
+      },
+    };
+
+    const latestFollowsResponse = await this.gqlQuery<UserFollowedChannelsResponse>(query);
+
+    if (latestFollowsResponse === null || isGQLErrorResponse(latestFollowsResponse)) {
+      return null;
+    }
+
+    if (latestFollowsResponse.data.user.id == '') {
+      return null;
+    }
+
+    const followedUsers: UserFollowedChannel[] = latestFollowsResponse.data.user.follows.edges.map(
+      (x) => ({
+        id: x.node.id,
+        bannerImageURL: x.node.bannerImageURL,
+        displayName: x.node.displayName,
+        login: x.node.login,
+        profileImageURL: x.node.profileImageURL,
+      }),
+    );
+
+    let oldestFollowsResponse: GQLResponse<UserFollowedChannelsResponse> | null = null;
+
+    if (latestFollowsResponse.data.user.follows.pageInfo.hasNextPage) {
+      query.variables.order = 'ASC';
+      oldestFollowsResponse = await this.gqlQuery<UserFollowedChannelsResponse>(query);
+
+      if (oldestFollowsResponse === null || isGQLErrorResponse(oldestFollowsResponse)) {
+        return followedUsers;
+      }
+
+      const latestLoginSet = new Set<string>(
+        latestFollowsResponse.data.user.follows.edges.map((x) => x.node.login),
+      );
+
+      const uniqueOldest = oldestFollowsResponse.data.user.follows.edges
+        .filter((x) => !latestLoginSet.has(x.node.login))
+        .map((x) => ({
+          id: x.node.id,
+          bannerImageURL: x.node.bannerImageURL,
+          displayName: x.node.displayName,
+          login: x.node.login,
+          profileImageURL: x.node.profileImageURL,
+        }))
+        .reverse();
+
+      return [...followedUsers, ...uniqueOldest];
+    }
+
+    return followedUsers;
   }
 
   async onResponse(req: FetchInterceptorRequest, _res: Response): Promise<boolean> {

@@ -6,6 +6,7 @@ import AppDb from '@/db/app-db';
 import { autovivify, isUndefined } from '@/lib/autovivify';
 import type { Screenshot, ScreenshotFormat } from '@/lib/capture-screenshot';
 import { FixedQueue } from '@/lib/fixed-queue';
+import type { UserFollowedChannel } from '@/twitch/user-followed-channel';
 import type { ViewerChannelRelationship } from '@/twitch/viewer-channel-relationship';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -48,6 +49,12 @@ interface Relationship {
   args: [string, string];
 }
 
+interface UserFollowedChannels {
+  type: 'userFollowedChannels';
+  requestId: number;
+  follows: UserFollowedChannel[] | null;
+}
+
 interface PlayAudio {
   type: 'playAudio';
   requestId: number;
@@ -60,6 +67,7 @@ type IncomingMessage =
   | CaptureScreenshot
   | SetGlobalScopeFunctionNames
   | Relationship
+  | UserFollowedChannels
   | PlayAudio;
 
 type ArgumentName = string;
@@ -76,6 +84,7 @@ const emitAction = (
     | 'banUser'
     | 'captureScreenshot'
     | 'relationship'
+    | 'userFollowedChannels'
     | 'playAudio',
   ...args: unknown[]
 ) => self.postMessage({ action, args });
@@ -111,6 +120,27 @@ async function relationship(
     relationshipResolver.push({ viewer, channel, resolver });
 
     emitAction('relationship', viewer, channel);
+  });
+}
+
+type UserFollowedChannelsResolver = (success: UserFollowedChannel[] | null) => void;
+
+interface UserFollowedChannelsResolverBlock {
+  resolver: UserFollowedChannelsResolver;
+  requestId: number;
+}
+
+let nextUserFollowedChannelsId = 1;
+
+const userFollowedChannelsResolver: UserFollowedChannelsResolverBlock[] = [];
+
+async function userFollowedChannels(login: string): Promise<UserFollowedChannel[] | null> {
+  return new Promise<UserFollowedChannel[] | null>((resolver) => {
+    const requestId = nextUserFollowedChannelsId++;
+
+    userFollowedChannelsResolver.push({ requestId, resolver });
+
+    emitAction('userFollowedChannels', requestId, login);
   });
 }
 
@@ -221,6 +251,16 @@ self.onmessage = async (e: MessageEvent<IncomingMessage>) => {
       relationshipResolver.splice(blockIdx, 1);
       break;
     }
+    case 'userFollowedChannels': {
+      const requestId = e.data.requestId;
+
+      const blockIdx = userFollowedChannelsResolver.findIndex((x) => x.requestId === requestId);
+
+      userFollowedChannelsResolver[blockIdx].resolver(e.data.follows);
+
+      userFollowedChannelsResolver.splice(blockIdx, 1);
+      break;
+    }
     case 'playAudio': {
       const requestId = e.data.requestId;
 
@@ -276,6 +316,7 @@ function assembleAPIArgument(incomingArgs: Argument<unknown>[]): void {
       channelMessagesAfterLastTick.call((x) => x.roomDisplayName === outerAPI.env.channel?.name),
     isUndefined,
     captureScreenshot,
+    userFollowedChannels,
     relationship,
     playAudio,
   };

@@ -94,6 +94,11 @@ interface RelationshipAction {
   args: [string, string];
 }
 
+interface UserFollowedChannelsAction {
+  action: 'userFollowedChannels';
+  args: [number, string];
+}
+
 interface PlayAudio {
   action: 'playAudio';
   requestId: number;
@@ -106,6 +111,7 @@ type Action =
   | BanUserAction
   | CaptureScreenshotAction
   | RelationshipAction
+  | UserFollowedChannelsAction
   | PlayAudio;
 
 const { label = '', updatePeriod, sourceCode } = defineProps<WidgetProps>();
@@ -165,6 +171,19 @@ const actionListener = async (action: Action) => {
           relationship: rel,
           viewer: action.args[0],
           channel: action.args[1],
+        },
+        [],
+      );
+
+      break;
+    case 'userFollowedChannels':
+      const follows = await twitchInteractor?.userFollowedChannels(action.args[1]);
+
+      worker!.postMessage(
+        {
+          type: 'userFollowedChannels',
+          requestId: action.args[0],
+          follows,
         },
         [],
       );

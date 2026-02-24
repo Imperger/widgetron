@@ -159,6 +159,13 @@ export class ExternalLibCache {
       );
 
       ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
+        'user-followed-channel.ts',
+        import.meta.glob('/src/twitch/user-followed-channel.ts', { as: 'raw' }),
+        [],
+        ['remove-export'],
+      );
+
+      ExternalLibCache.widgetTypesCode += await ExternalLibCache.load(
         'api.ts',
         import.meta.glob('/src/widget/api/api.ts', { as: 'raw' }),
         [

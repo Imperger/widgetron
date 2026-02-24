@@ -3,6 +3,7 @@ import type { Environment } from './environment';
 
 import type AppDB from '@/db/app-db';
 import type { Screenshot } from '@/lib/capture-screenshot';
+import type { UserFollowedChannel } from '@/twitch/user-followed-channel';
 import type { ViewerChannelRelationship } from '@/twitch/viewer-channel-relationship';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -37,6 +38,7 @@ export interface API {
   isUndefined(x: unknown): boolean;
   captureScreenshot(type: 'rgba' | 'png'): Promise<Screenshot>;
   relationship(viewer: string, channel: string): Promise<ViewerChannelRelationship | null>;
+  userFollowedChannels(login: string): Promise<UserFollowedChannel[] | null>;
   /**
    * Plays an audio file from the given URL and resolves when playback finishes or fails.
    *
