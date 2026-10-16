@@ -2,6 +2,8 @@
 
 ![Logo](./resources/icon.svg)
 
+[![Logo](https://developer.chrome.com/static/docs/webstore/branding/image/UV4C4ybeBTsZt43U4xis.png)](https://chromewebstore.google.com/detail/widgetron/nodljngdkeookbcgcgbjlkhpgocjibll)
+
 ## Features
 
 - Displays the date a user started following a channel
